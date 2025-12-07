@@ -1,8 +1,7 @@
 import random
-from config import MITAD_ICONO, ANCHO 
+from config import MITAD_ICONO, ANCHO, CPU_CAMARA, VELOCIDAD_PAQUETE, FRECUENCIA_ATAQUE, ESPACIO_PAQUETE
 
-VELOCIDAD_PAQUETE = 5
-FRECUENCIA_ATAQUE = 5
+
 
 posiciones_escenario = {
     1: { 'camara': (750, 200), 'semaforo': (100, 70), 'hacker': (100, 370), 'papelera': (0, 0) },
@@ -43,7 +42,6 @@ class Actor:
         self.y = y
         self.nombre = nombre
         self.rol = rol 
-        self.cpu = 100
 
 class GestorSimulacion:
     def __init__(self):
@@ -76,7 +74,7 @@ class GestorSimulacion:
         self.semaforo = Actor(pos['semaforo'][0], pos['semaforo'][1], "Semáforo", 'semaforo')
         self.hacker = Actor(pos['hacker'][0], pos['hacker'][1], "Hacker", 'hacker')
         self.papelera = Actor(pos['papelera'][0], pos['papelera'][1], "Papelera", 'papelera')  
-        self.camara.cpu = 100
+        self.camara.cpu = CPU_CAMARA
 
 
         self.fase_mitm = 0
@@ -117,7 +115,7 @@ class GestorSimulacion:
     def _procesar_legitimo(self, paquete):
         self.paquetes.remove(paquete)
         if self.camara.cpu > 0:
-            self.camara.cpu -= 5 
+            self.camara.cpu -= ESPACIO_PAQUETE 
             if self.camara.cpu < 0: self.camara.cpu = 0
             self.stats_buenos_ok += 1 
         else:
@@ -155,8 +153,7 @@ class GestorSimulacion:
                 # ESCENARIO 1: VULNERABLE
                 if self.escenario_actual == 1:
                     self.paquetes.remove(p)
-                    dano = 5
-                    self.camara.cpu -= dano
+                    self.camara.cpu -= ESPACIO_PAQUETE
                     if self.camara.cpu < 0: self.camara.cpu = 0
                     
                     if p.es_malicioso: self.stats_malos_ok += 1
@@ -171,7 +168,7 @@ class GestorSimulacion:
                             # PRIMERO (Entra y daña)
                             self.memoria_ips.add(identificador_origen)
                             self.paquetes.remove(p)
-                            self.camara.cpu -= 5 
+                            self.camara.cpu -= ESPACIO_PAQUETE
                             self.stats_malos_ok += 1 
                             self.estado_msg = "⚠️ ALERTA: Nueva conexión registrada..."
                         else:

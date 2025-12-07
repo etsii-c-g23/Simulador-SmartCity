@@ -1,6 +1,7 @@
 import pygame
 import os
 from config import *
+from config import CPU_CAMARA
 
 class Boton:
     def __init__(self, x, y, ancho, alto, texto, id_accion):
@@ -138,7 +139,7 @@ class VistaSimulador:
 
         
         if actor.rol == 'camara':
-            ratio = actor.cpu / 100
+            ratio = actor.cpu / CPU_CAMARA
             color_cpu = AZUL if ratio > 0.5 else ROJO
             bar_y = actor.y + TAMANO_ICONO + 5
             pygame.draw.rect(self.pantalla, NEGRO, (actor.x, bar_y, TAMANO_ICONO, 10))
