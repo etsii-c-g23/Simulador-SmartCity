@@ -1,11 +1,15 @@
 # backend.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse # <--- Nuevo import
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import os
 
 app = FastAPI()
+
+# Servir archivos estáticos (imágenes)
+app.mount("/media", StaticFiles(directory="media"), name="media")
 
 # Configuración CORS
 app.add_middleware(
