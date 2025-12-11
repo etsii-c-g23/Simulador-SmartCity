@@ -142,37 +142,40 @@
       };
 
       const handleProtocolStep = async () => {
-        const nextStep = protocolStep + 1;
-        const isSecure = mode === 'mitm_secure';
-        const maxSteps = isSecure ? 6 : 4;
+         const nextStep = protocolStep + 1;
+         const isSecure = mode === 'mitm_secure';
+         
+         const maxSteps = isSecure ? 6 : 4; 
 
-        if (protocolStep >= maxSteps) {
-          setProtocolStep(0);
-          setLogs([]);
-          addLog("Protocolo reiniciado", "neutral");
-          return;
-        }
+         if (protocolStep >= maxSteps) {
+             setProtocolStep(0); 
+             setLogs([]); 
+             addLog("Protocolo reiniciado", "neutral");
+             return;
+         }
 
-        try {
-          const res = await fetch(`${API_URL}/protocol_step`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ step: nextStep, mode: mode, mitm_active: mitmActive })
-          });
-          const data = await res.json();
+         try {
+             const res = await fetch(`${API_URL}/protocol_step`, {
+                 method: 'POST',
+                 headers: {'Content-Type': 'application/json'},
+                 body: JSON.stringify({ step: nextStep, mode: mode, mitm_active: mitmActive })
+             });
+             const data = await res.json();
+             
+             setProtocolStep(nextStep);
+             
+             // Animación basada en source/target del backend
+             const pOrigin = POSITIONS[data.source]; 
+             const pTarget = POSITIONS[data.target];
+             const pColor = mitmActive ? COLORS.danger : COLORS.safe;
+             
+             if (pOrigin && pTarget) {
+                 animatePacket(pOrigin, pTarget, pColor, `M${nextStep}`);
+             }
+             
+             setTimeout(() => addLog(data.msg, data.type), 800);
 
-          setProtocolStep(nextStep);
-
-          const pOrigin = nextStep % 2 !== 0 ? POSITIONS.alice : POSITIONS.bob;
-          let pTarget = nextStep % 2 !== 0 ? POSITIONS.bob : POSITIONS.alice;
-
-          if (data.intercepted) pTarget = POSITIONS.eve;
-
-          animatePacket(pOrigin, pTarget, mitmActive ? COLORS.danger : COLORS.safe, `M${nextStep}`);
-
-          setTimeout(() => addLog(data.msg, data.type), 800);
-
-        } catch (e) { addLog("Error Backend", "danger"); }
+         } catch (e) { addLog("Error Backend: " + e, "danger"); }
       };
 
       const animatePacket = (start, end, color, label) => {
