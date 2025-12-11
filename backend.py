@@ -75,7 +75,7 @@ def check_dos(req: DoSRequest):
             return {"status": "error", "msg": f"⛔ BLOQUEADO: La MAC {req.mac} ya tiene sesión activa."}
         
         if abs(entry['rssi'] - req.rssi) > 10:
-            return {"status": "error", "msg": f"⛔ BLOQUEADO: Spoofing detectado. RSSI anómalo ({req.rssi} vs {entry['rssi']})."}
+            return {"status": "error", "msg": f"⛔ BLOQUEADO: RSSI anómalo ({req.rssi} vs {entry['rssi']})."}
         
         server_db[req.mac]['status'] = 'connected'
         return {"status": "success", "msg": "✅ ACCESO CONCEDIDO: Dispositivo verificado."}
@@ -84,7 +84,7 @@ def check_dos(req: DoSRequest):
         # MAC DESCONOCIDA
         for stored_mac, data in server_db.items():
             if abs(data['rssi'] - req.rssi) < 5:
-                return {"status": "error", "msg": f"⛔ BLOQUEADO: Ataque Sybil. MAC nueva en ubicación protegida."}
+                return {"status": "error", "msg": f"⛔ BLOQUEADO: Misma MAC en nueva en ubicación."}
         
         server_db[req.mac] = {'rssi': req.rssi, 'trusted': True, 'status': 'connected'}
         return {"status": "success", "msg": "🆕 NUEVO DISPOSITIVO: Registrado exitosamente."}
@@ -103,24 +103,39 @@ def protocol_step(req: ProtocolRequest):
         intercepted = True
 
     if is_secure:
-        if step == 1: msg = f"📤 Alice -> Bob [M1]: Commit(Hash(Na)). {'🙈 Hacker ve el Hash, no el secreto.' if active else ''}"
-        elif step == 2: msg = f"📤 Bob -> Alice [M2]: Nb (En claro). {'👀 Hacker intercepta Nb.' if active else ''}"
+        if step == 1: msg = f"📤 Alice -> Bob [M1]: Valor c. {'🙈 Hacker ve el commit, no el secreto mA.' if active else ''}"
+        elif step == 2: msg = f"📤 Bob -> Alice [M2]: mB = IDA || IDB || gb || Nb. {'👀 Hacker intercepta mB.' if active else ''}"
         elif step == 3: 
-            if active: msg = "🛡️ Alice -> Bob [M3]: Open(Na). Hacker intenta modificar, pero Hash falla. BLOQUEADO."; type_="success"
-            else: msg = "📤 Alice -> Bob [M3]: Open(Na). Bob verifica Hash. OK."
-        elif step == 4: msg = "✅ CANAL SEGURO: Claves SAS generadas (Na ⊕ Nb)."; type_="success"
+            if active: msg = "🛡️ Alice -> Bob [M3]: Valor d. Hacker intenta modificar, pero falla la comprobación. BLOQUEADO."; type_="success"
+            else: msg = "📤 Alice -> Bob [M3]: Valor d. Bob verifica integridad de d y c. OK."
+        elif step == 4: 
+            msg = f"📤 Alice -> Bob [M4]: AuthA = TS || LT || MAC(KAB, SA || TS || LT). {'👀 Hacker intercepta pero no puede descifrar.' if active else 'Bob recibe AuthA.'}"
+        elif step == 5: 
+            msg = f"📤 Bob -> Alice [M5]: AuthB = MAC(KBA, SB || TS || LT). {'👀 Hacker intercepta pero no puede descifrar.' if active else 'Alice recibe AuthB.'}"
+        elif step == 6: 
+            msg = "✅ CANAL SEGURO: Autenticación mutua exitosa. Claves SAS verificadas MACA == MACB."; type_="success"
     else:
-        if step == 1: msg = "Alice envía 'Hello' (Texto Claro)."
+        if step == 1: 
+            msg = "📤 Alice -> Bob [M1]: mA = IDA || ga || NA (En claro)."
         elif step == 2: 
-            if active: msg = "⚠️ Hacker intercepta paquete y suplanta a Bob."; type_="danger"
-            else: msg = "Bob responde a Alice."
+            if active: 
+                msg = "⚠️ EVE intercepta mA y genera mE = IDA || ge || NE"; type_="danger"
+            else: 
+                msg = "📤 Bob -> Alice [M2]: mB = IDB || gb || NB (En claro)."
         elif step == 3:
-            if active: msg = "❌ MITM EXITOSO: Hacker tiene el control de la sesión."; type_="danger"
-            else: msg = "Conexión establecida (Insegura)."
+            if active:
+                msg = "📤 EVE -> Bob: Envía mE falsificado. Bob calcula SB = NE ⊕ NB"; type_="danger"
+            else:
+                msg = "Alice calcula SA = NA ⊕ NB. Bob calcula SB = NA ⊕ NB."
+        elif step == 4:
+            if active:
+                msg = "❌ MITM EXITOSO: Eve establece KAE = gᵃᵉ con Alice y KBE = gbe con Bob."; type_="danger"
+            else:
+                msg = "✅ Autenticación exitosa. Alice y Bob establecen KAB = gab mod p."
 
     return {
         "msg": msg, 
         "type": type_, 
         "intercepted": intercepted,
-        "next_step": step if step >= (4 if is_secure else 3) else step + 1
+        "next_step": step if step >= (6 if is_secure else 3) else step + 1
     }

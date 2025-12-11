@@ -39,7 +39,6 @@
       animation: pulse-red 2s infinite;
     }
 
-    /* Animación sutil para las luces del semáforo */
     @keyframes glow {
       0% {
         opacity: 0.8;
@@ -66,21 +65,18 @@
 
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
-    // IMPORTANTE: Asegúrate de que este puerto coincida con el que usa uvicorn (por defecto 8000)
-    // Si usas el script de arranque, estará en el 8000.
-    // Si abres el HTML directamente sin el backend sirviéndolo, necesitas la URL completa.
-    // Si el backend sirve el HTML, puedes usar una ruta relativa "/" o la absoluta.
-    const API_URL = ""; // Dejar vacío si el backend sirve este HTML. Si no, poner "http://localhost:8000"
+    
+    const API_URL = "";
 
+    // CAMBIO: Alice = Semáforo (izquierda), Bob = Cámara (derecha)
     const POSITIONS = {
-      alice: { x: 800, y: 150 },
-      bob: { x: 150, y: 150 },
+      alice: { x: 150, y: 150 },  // Semáforo (izquierda)
+      bob: { x: 800, y: 150 },    // Cámara (derecha)
       eve: { x: 475, y: 300 }
     };
     const COLORS = { safe: '#10B981', danger: '#EF4444', neutral: '#3B82F6', yellow: '#F59E0B' };
 
     const App = () => {
-      // --- ESTADOS ---
       const [mode, setMode] = useState('dos_insecure');
       const [dosMac, setDosMac] = useState('11:22:33:44:55:66');
       const [dosRssi, setDosRssi] = useState(-45);
@@ -94,7 +90,6 @@
       const [packets, setPackets] = useState([]);
       const logEndRef = useRef(null);
 
-      // --- FETCH INICIAL ---
       const fetchDB = async () => {
         try {
           const res = await fetch(`${API_URL}/db`);
@@ -113,10 +108,7 @@
         } catch (e) { addLog("Error: No se pudo contactar con el Backend.", "danger"); }
       };
 
-      // Reset al cambiar modo
       useEffect(() => { resetBackend(); }, [mode]);
-
-      // Auto-scroll Logs
       useEffect(() => { logEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [logs]);
 
       const addLog = (msg, type = 'info') => {
@@ -124,12 +116,10 @@
         setLogs(prev => [...prev, { id: Date.now() + Math.random(), time, msg, type }]);
       };
 
-      // --- LOGICA DOS (Llamada al Backend) ---
       const handleSendDoS = async () => {
         const origin = sender === 'alice' ? POSITIONS.alice : POSITIONS.eve;
         const isHacker = sender === 'eve';
 
-        // Animación visual inmediata
         animatePacket(origin, POSITIONS.bob, isHacker ? COLORS.danger : COLORS.safe, 'REQ');
 
         try {
@@ -144,19 +134,17 @@
           });
           const data = await res.json();
 
-          // Retraso para simular red
           setTimeout(() => {
             addLog(data.msg, data.status);
-            fetchDB(); // Actualizar visualización de BD
+            fetchDB();
           }, 800);
         } catch (e) { addLog("Error de conexión con Backend", "danger"); }
       };
 
-      // --- LOGICA MITM (Llamada al Backend) ---
       const handleProtocolStep = async () => {
         const nextStep = protocolStep + 1;
         const isSecure = mode === 'mitm_secure';
-        const maxSteps = isSecure ? 4 : 3;
+        const maxSteps = isSecure ? 6 : 4;
 
         if (protocolStep >= maxSteps) {
           setProtocolStep(0);
@@ -175,11 +163,10 @@
 
           setProtocolStep(nextStep);
 
-          // Animación
           const pOrigin = nextStep % 2 !== 0 ? POSITIONS.alice : POSITIONS.bob;
           let pTarget = nextStep % 2 !== 0 ? POSITIONS.bob : POSITIONS.alice;
 
-          if (data.intercepted) pTarget = POSITIONS.eve; // Visualmente al hacker
+          if (data.intercepted) pTarget = POSITIONS.eve;
 
           animatePacket(pOrigin, pTarget, mitmActive ? COLORS.danger : COLORS.safe, `M${nextStep}`);
 
@@ -188,13 +175,12 @@
         } catch (e) { addLog("Error Backend", "danger"); }
       };
 
-      // --- SISTEMA DE ANIMACIÓN ---
       const animatePacket = (start, end, color, label) => {
         const id = Date.now();
         setPackets(prev => [...prev, { id, x: start.x, y: start.y, tx: end.x, ty: end.y, color, label, progress: 0 }]);
 
         let startTime = null;
-        const duration = 800; // ms
+        const duration = 800;
 
         const step = (timestamp) => {
           if (!startTime) startTime = timestamp;
@@ -219,7 +205,6 @@
       return (
         <div className="flex flex-col h-screen bg-slate-900">
 
-          {/* 1. HEADER */}
           <header className="bg-slate-800 border-b border-slate-700 p-3 flex justify-between items-center shadow-md z-20">
             <h1 className="font-bold text-white tracking-wide flex items-center gap-2">
               <span className="text-xl">🛡️</span> G-23 SECURITY DEMO
@@ -232,13 +217,10 @@
             </select>
           </header>
 
-          {/* 2. BODY PRINCIPAL (Flex Row) */}
           <div className="flex flex-1 overflow-hidden">
 
-            {/* A. SIDEBAR IZQUIERDA (Controles) */}
             <aside className="w-80 bg-slate-800 border-r border-slate-700 p-5 flex flex-col gap-6 overflow-y-auto z-10 shadow-xl">
 
-              {/* Controles DoS */}
               {mode.includes('dos') && (
                 <div className="space-y-4 animate-[fadeIn_0.5s]">
                   <div className="bg-slate-700/50 p-3 rounded border border-slate-600">
@@ -246,7 +228,7 @@
                     <div className="flex gap-2">
                       <button onClick={() => { setSender('alice'); setDosMac('11:22:33:44:55:66'); setDosRssi(-45); }}
                         className={`flex-1 py-2 rounded text-xs font-bold border transition-all ${sender === 'alice' ? 'bg-green-900/50 border-green-500 text-green-300' : 'border-slate-600 text-slate-400 hover:bg-slate-700'}`}>
-                        CÁMARA
+                        SEMÁFORO
                       </button>
                       <button onClick={() => setSender('eve')}
                         className={`flex-1 py-2 rounded text-xs font-bold border transition-all ${sender === 'eve' ? 'bg-red-900/50 border-red-500 text-red-300' : 'border-slate-600 text-slate-400 hover:bg-slate-700'}`}>
@@ -267,7 +249,6 @@
                   </div>
                   <button onClick={handleSendDoS} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded shadow-md active:scale-95 transition-transform">ENVIAR PAQUETE</button>
 
-                  {/* Mini Monitor BD */}
                   <div className="mt-4 border-t border-slate-600 pt-4">
                     <h4 className="text-[10px] font-bold text-slate-500 mb-2 uppercase">Estado Servidor (Backend)</h4>
                     <div className="space-y-1.5">
@@ -284,7 +265,6 @@
                 </div>
               )}
 
-              {/* Controles MitM */}
               {mode.includes('mitm') && (
                 <div className="space-y-5 animate-[fadeIn_0.5s]">
                   <div className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 flex justify-between items-center cursor-pointer group" onClick={() => setMitmActive(!mitmActive)}>
@@ -294,20 +274,18 @@
                     </div>
                   </div>
                   <div className="text-center p-4 bg-slate-900 rounded border border-slate-700">
-                    <div className="text-4xl font-bold text-white mb-1">{protocolStep} / {mode === 'mitm_secure' ? 4 : 3}</div>
+                    <div className="text-4xl font-bold text-white mb-1">{protocolStep} / {mode === 'mitm_secure' ? 6 : 4}</div>
                     <div className="text-xs text-purple-300 font-bold uppercase tracking-wider">Paso del Protocolo</div>
                   </div>
                   <button onClick={handleProtocolStep} className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded shadow-md active:scale-95 transition-transform">
-                    {protocolStep === 0 ? '▶ INICIAR PROTOCOLO' : protocolStep >= (mode === 'mitm_secure' ? 4 : 3) ? '↺ REINICIAR' : '⬇ SIGUIENTE PASO'}
+                    {protocolStep === 0 ? '▶ INICIAR PROTOCOLO' : protocolStep >= (mode === 'mitm_secure' ? 6 : 4) ? '↺ REINICIAR' : '⬇ SIGUIENTE PASO'}
                   </button>
                 </div>
               )}
             </aside>
 
-            {/* B. COLUMNA DERECHA (Canvas + Footer Log) */}
             <div className="flex-1 flex flex-col min-w-0">
 
-              {/* CANVAS: Ocupa todo el espacio sobrante (flex-1) */}
               <div className="flex-1 relative bg-slate-900 overflow-hidden">
                 <svg className="w-full h-full absolute inset-0 select-none">
                   <defs>
@@ -317,10 +295,8 @@
                   </defs>
                   <rect width="100%" height="100%" fill="url(#grid)" />
 
-                  {/* Línea de conexión */}
                   <line x1={POSITIONS.alice.x} y1={POSITIONS.alice.y} x2={POSITIONS.bob.x} y2={POSITIONS.bob.y} stroke="#334155" strokeWidth="3" strokeDasharray="8,8" />
 
-                  {/* Paquetes animados */}
                   {packets.map(p => (
                     <g key={p.id} className="drop-shadow-md">
                       <circle cx={p.x} cy={p.y} r="16" fill={p.color} stroke="white" strokeWidth="2" />
@@ -328,22 +304,20 @@
                     </g>
                   ))}
 
-                  {/* === ACTORES CON IMÁGENES === */}
-
-                  {/* ALICE (Cámara) */}
+                  {/* ALICE = SEMÁFORO (Izquierda) */}
                   <g transform={`translate(${POSITIONS.alice.x}, ${POSITIONS.alice.y})`}>
                     <circle r="55" fill="#0f172a" stroke={COLORS.safe} strokeWidth="3" className="drop-shadow-[0_0_20px_rgba(16,185,129,0.2)]" />
-                    <image href="/media/camara.png" x="-40" y="-40" width="80" height="80" />
+                    <image href="/media/semaforo.png" x="-40" y="-40" width="80" height="80" />
                     <text textAnchor="middle" dy="75" fill="white" fontSize="16" fontWeight="bold">ALICE</text>
-                    <text textAnchor="middle" dy="95" fill="#64748b" fontSize="12" fontFamily="monospace">Cámara IoT</text>
+                    <text textAnchor="middle" dy="95" fill="#64748b" fontSize="12" fontFamily="monospace">Semáforo 5G</text>
                   </g>
 
-                  {/* BOB (Semáforo 5G) */}
+                  {/* BOB = CÁMARA (Derecha) */}
                   <g transform={`translate(${POSITIONS.bob.x}, ${POSITIONS.bob.y})`}>
                     <circle r="55" fill="#0f172a" stroke={COLORS.neutral} strokeWidth="3" className="drop-shadow-[0_0_25px_rgba(59,130,246,0.3)]" />
-                    <image href="/media/semaforo.png" x="-40" y="-40" width="80" height="80" />
+                    <image href="/media/camara.png" x="-40" y="-40" width="80" height="80" />
                     <text textAnchor="middle" dy="75" fill="white" fontSize="16" fontWeight="bold">BOB</text>
-                    <text textAnchor="middle" dy="95" fill="#64748b" fontSize="12" fontFamily="monospace">Semáforo 5G (GW)</text>
+                    <text textAnchor="middle" dy="95" fill="#64748b" fontSize="12" fontFamily="monospace">Cámara IoT</text>
                   </g>
 
                   {/* EVE (Hacker) */}
@@ -356,7 +330,6 @@
                 </svg>
               </div>
 
-              {/* FOOTER LOG: Altura fija (h-64), pegado abajo (flex-none) */}
               <div className="h-64 bg-black border-t-4 border-slate-700 flex-none flex flex-col shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-20">
                 <div className="bg-slate-800 px-4 py-2 flex justify-between items-center border-b border-slate-700">
                   <span className="text-xs font-bold text-green-400 flex items-center gap-2 uppercase tracking-wider">
