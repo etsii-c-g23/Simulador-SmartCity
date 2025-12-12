@@ -77,6 +77,7 @@
     const COLORS = { safe: '#10B981', danger: '#EF4444', neutral: '#3B82F6', yellow: '#F59E0B' };
 
     const App = () => {
+      // Valores iniciales por defecto (de Alice, el dispositivo legítimo)
       const [mode, setMode] = useState('dos_insecure');
       const [dosMac, setDosMac] = useState('11:22:33:44:55:66');
       const [dosRssi, setDosRssi] = useState(-45);
@@ -85,16 +86,28 @@
       const [serverDB, setServerDB] = useState({});
       const [protocolStep, setProtocolStep] = useState(0);
       const [mitmActive, setMitmActive] = useState(false);
+      
+      const [cameraState, setCameraState] = useState({ 
+        cpu_health: 20, 
+        max_health: 20,
+        status: 'OK', 
+        image: '/media/camara.png' 
+      }); 
 
       const [logs, setLogs] = useState([]);
       const [packets, setPackets] = useState([]);
       const logEndRef = useRef(null);
+      
+      const isDosInsecure = mode === 'dos_insecure';
+      const isCameraDown = cameraState.status === 'DOWN' && isDosInsecure; 
+
 
       const fetchDB = async () => {
         try {
           const res = await fetch(`${API_URL}/db`);
           const data = await res.json();
-          setServerDB(data);
+          setServerDB(data.db); 
+          setCameraState(data.camera_state); 
         } catch (e) { console.error("Error conectando a backend", e); }
       };
 
@@ -105,11 +118,23 @@
           setLogs([]);
           setPackets([]);
           setProtocolStep(0);
+          setCameraState({ cpu_health: 20, max_health: 20, status: 'OK', image: '/media/camara.png' });
+          // Restablecer inputs a los valores de Alice al reiniciar modo DoS
+          if (mode.includes('dos')) {
+             setDosMac('11:22:33:44:55:66');
+             setDosRssi(-45);
+             setSender('alice');
+          }
         } catch (e) { addLog("Error: No se pudo contactar con el Backend.", "danger"); }
       };
 
-      useEffect(() => { resetBackend(); }, [mode]);
-      useEffect(() => { logEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [logs]);
+      useEffect(() => { 
+        resetBackend(); 
+      }, [mode]);
+      
+      useEffect(() => { 
+        logEndRef.current?.scrollIntoView({ behavior: "smooth" }); 
+      }, [logs]);
 
       const addLog = (msg, type = 'info') => {
         const time = new Date().toLocaleTimeString().split(' ')[0];
@@ -120,6 +145,11 @@
         const origin = sender === 'alice' ? POSITIONS.alice : POSITIONS.eve;
         const isHacker = sender === 'eve';
 
+        if (isCameraDown) {
+            addLog("La cámara está caída, no se procesan más paquetes.", "error");
+            return;
+        }
+
         animatePacket(origin, POSITIONS.bob, isHacker ? COLORS.danger : COLORS.safe, 'REQ');
 
         try {
@@ -127,8 +157,9 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              mac: isHacker ? dosMac : '11:22:33:44:55:66',
-              rssi: isHacker ? parseInt(dosRssi) : -45,
+              // CAMBIO: Se envían los valores actuales de los inputs para MAC y RSSI, independientemente del sender.
+              mac: dosMac, 
+              rssi: parseInt(dosRssi),
               is_secure_mode: mode === 'dos_secure'
             })
           });
@@ -137,6 +168,7 @@
           setTimeout(() => {
             addLog(data.msg, data.status);
             fetchDB();
+            setCameraState(data.camera_state); 
           }, 800);
         } catch (e) { addLog("Error de conexión con Backend", "danger"); }
       };
@@ -226,10 +258,14 @@
 
               {mode.includes('dos') && (
                 <div className="space-y-4 animate-[fadeIn_0.5s]">
+                
+                  
+                  
                   <div className="bg-slate-700/50 p-3 rounded border border-slate-600">
                     <label className="text-xs font-bold text-slate-400 block mb-2">QUIÉN ENVÍA:</label>
                     <div className="flex gap-2">
-                      <button onClick={() => { setSender('alice'); setDosMac('11:22:33:44:55:66'); setDosRssi(-45); }}
+                      {/* CAMBIO: Los botones solo cambian el sender, no los valores de los inputs */}
+                      <button onClick={() => { setSender('alice'); }}
                         className={`flex-1 py-2 rounded text-xs font-bold border transition-all ${sender === 'alice' ? 'bg-green-900/50 border-green-500 text-green-300' : 'border-slate-600 text-slate-400 hover:bg-slate-700'}`}>
                         SEMÁFORO
                       </button>
@@ -250,7 +286,13 @@
                     </label>
                     <input type="range" min="-90" max="-10" value={dosRssi} onChange={(e) => setDosRssi(e.target.value)} className="w-full accent-blue-500 h-2 bg-slate-700 rounded appearance-none" />
                   </div>
-                  <button onClick={handleSendDoS} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded shadow-md active:scale-95 transition-transform">ENVIAR PAQUETE</button>
+                  <button 
+                    onClick={handleSendDoS} 
+                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded shadow-md active:scale-95 transition-transform disabled:bg-slate-500 disabled:cursor-not-allowed" 
+                    disabled={isCameraDown}
+                  >
+                    {isCameraDown ? 'SISTEMA CAÍDO (CPU 0)' : 'ENVIAR PAQUETE'}
+                  </button>
 
                   <div className="mt-4 border-t border-slate-600 pt-4">
                     <h4 className="text-[10px] font-bold text-slate-500 mb-2 uppercase">Estado Servidor (Backend)</h4>
@@ -317,8 +359,14 @@
 
                   {/* BOB = CÁMARA (Derecha) */}
                   <g transform={`translate(${POSITIONS.bob.x}, ${POSITIONS.bob.y})`}>
-                    <circle r="55" fill="#0f172a" stroke={COLORS.neutral} strokeWidth="3" className="drop-shadow-[0_0_25px_rgba(59,130,246,0.3)]" />
-                    <image href="/media/camara.png" x="-40" y="-40" width="80" height="80" />
+                    {/* El color del borde y la animación 'attacking' dependen del estado de la CPU */}
+                    <circle r="55" fill="#0f172a" 
+                      stroke={isCameraDown ? COLORS.danger : COLORS.neutral} 
+                      strokeWidth="3" 
+                      className={`drop-shadow-[0_0_25px_rgba(59,130,246,0.3)] ${isCameraDown ? 'attacking' : ''}`} />
+                    
+                    {/* La imagen de la cámara cambia si está DOWN */}
+                    <image href={cameraState.image} x="-40" y="-40" width="80" height="80" />
                     <text textAnchor="middle" dy="75" fill="white" fontSize="16" fontWeight="bold">BOB</text>
                     <text textAnchor="middle" dy="95" fill="#64748b" fontSize="12" fontFamily="monospace">Cámara IoT</text>
                   </g>
@@ -327,7 +375,7 @@
                   <g transform={`translate(${POSITIONS.eve.x}, ${POSITIONS.eve.y})`} className={`transition-all duration-500 ${mitmActive || sender === 'eve' ? 'opacity-100' : 'opacity-40 grayscale'}`}>
                     <path d="M0,-55 L50,40 L-50,40 Z" fill="#0f172a" stroke={COLORS.danger} strokeWidth="3" className={mitmActive || sender === 'eve' ? 'attacking drop-shadow-[0_0_20px_rgba(239,68,68,0.4)]' : ''} />
                     <image href="/media/hacker.png" x="-35" y="-35" width="70" height="70" />
-                    <text textAnchor="middle" dy="65" fill={COLORS.danger} fontSize="16" fontWeight="bold">EVE</text>
+                    <text textAnchor="middle" dy="65" fill={COLORS.danger} fontSize="16" fontWeight="bold">HUGO</text>
                     <text textAnchor="middle" dy="85" fill="#ef4444" fontSize="12" fontFamily="monospace">Atacante</text>
                   </g>
                 </svg>

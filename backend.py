@@ -35,7 +35,20 @@ class ProtocolRequest(BaseModel):
 INITIAL_DB = {
     '11:22:33:44:55:66': {'rssi': -45, 'trusted': True, 'status': 'disconnected'}
 }
+
+# --- ESTADO GLOBAL DE LA CÁMARA (CPU como "salud" que se reduce) ---
+INITIAL_CPU_HEALTH = 20 # Salud inicial de la CPU
+CAMERA_STATE = {
+    'cpu_health': INITIAL_CPU_HEALTH, # Contador que se reduce
+    'max_health': INITIAL_CPU_HEALTH,
+    'status': 'OK', # OK | DOWN
+    'image': '/media/camara.png',
+}
+# ----------------------------------------
+
 server_db = INITIAL_DB.copy()
+camera_state = CAMERA_STATE.copy()
+
 
 # ==========================================
 #  NUEVO: RUTA PARA SERVIR EL FRONTEND
@@ -52,42 +65,88 @@ def serve_frontend():
 
 @app.post("/reset")
 def reset_system():
-    global server_db
+    global server_db, camera_state
     server_db = {k: v.copy() for k, v in INITIAL_DB.items()}
+    # Resetear el estado de la cámara
+    camera_state = CAMERA_STATE.copy()
     return {"msg": "Sistema reiniciado correctamente"}
 
 @app.get("/db")
 def get_db():
-    return server_db
+    global server_db, camera_state
+    # Devolver el estado de la DB y el estado de la cámara
+    return {"db": server_db, "camera_state": camera_state}
 
 @app.post("/check_dos")
 def check_dos(req: DoSRequest):
-    global server_db
+    global server_db, camera_state
     
+    response_data = {}
+    
+    # 1. Chequeo de estado de CPU (si ya está caída, no procesar)
+    if camera_state['status'] == 'DOWN':
+        return {"status": "error", "msg": "❌ FALLO DEL SISTEMA: La Cámara está fuera de servicio (CPU 0).", "camera_state": camera_state}
+
     if not req.is_secure_mode:
-        return {"status": "success", "msg": "Paquete aceptado (Sin verificación de seguridad)."}
-
-    entry = server_db.get(req.mac)
-
-    if entry:
-        # MAC CONOCIDA
-        if entry['status'] == 'connected':
-            return {"status": "error", "msg": f"⛔ BLOQUEADO: La MAC {req.mac} ya tiene sesión activa."}
+        # --- MODO INSEGURO (VULNERABLE) ---
         
-        if abs(entry['rssi'] - req.rssi) > 10:
-            return {"status": "error", "msg": f"⛔ BLOQUEADO: RSSI anómalo ({req.rssi} vs {entry['rssi']})."}
-        
-        server_db[req.mac]['status'] = 'connected'
-        return {"status": "success", "msg": "✅ ACCESO CONCEDIDO: Dispositivo verificado."}
+        # Cualquier paquete es aceptado.
+        if req.mac == '11:22:33:44:55:66':
+            response_data = {"status": "success", "msg": "Paquete legítimo aceptado."}
+        else:
+            response_data = {"status": "success", "msg": "Paquete desconocido aceptado."}
+
 
     else:
-        # MAC DESCONOCIDA
-        for stored_mac, data in server_db.items():
-            if abs(data['rssi'] - req.rssi) < 5:
-                return {"status": "error", "msg": f"⛔ BLOQUEADO: Distinta MAC en misma ubicación."}
+        # --- MODO SEGURO (CON PROTECCIÓN/PAPER) ---
         
-        server_db[req.mac] = {'rssi': req.rssi, 'trusted': True, 'status': 'connected'}
-        return {"status": "success", "msg": "🆕 NUEVO DISPOSITIVO: Registrado exitosamente."}
+        entry = server_db.get(req.mac)
+        
+        if entry:
+            # MAC CONOCIDA
+            if entry['status'] == 'connected':
+                # Bloqueo rápido sin CPU hit.
+                response_data = {"status": "error", "msg": f"⛔ BLOQUEADO: La MAC {req.mac} ya tiene sesión activa."}
+            
+            elif abs(entry['rssi'] - req.rssi) > 10:
+                # Bloqueo rápido sin CPU hit.
+                response_data = {"status": "error", "msg": f"⛔ BLOQUEADO: RSSI anómalo ({req.rssi} vs {entry['rssi']})."}
+            
+            else:
+                # Paquete legítimo
+                server_db[req.mac]['status'] = 'connected'
+                response_data = {"status": "success", "msg": "✅ ACCESO CONCEDIDO: Dispositivo verificado."}
+
+        else:
+            # MAC DESCONOCIDA (Sospechoso)
+            blocked = False
+            for stored_mac, data in server_db.items():
+                if abs(data['rssi'] - req.rssi) < 5:
+                    blocked = True
+                    response_data = {"status": "error", "msg": f"⛔ BLOQUEADO: Distinta MAC en misma ubicación."}
+                    break
+            
+            # Si se registra con éxito, no hay CPU hit
+            if not blocked:
+                server_db[req.mac] = {'rssi': req.rssi, 'trusted': True, 'status': 'connected'}
+                response_data = {"status": "success", "msg": "🆕 NUEVO DISPOSITIVO: Registrado exitosamente."}
+
+    # 2. Lógica de CPU (Aplica SOLO al modo DoS Vulnerable)
+    if not req.is_secure_mode:
+        # NUEVO: En el escenario DoS Vulnerable, cualquier paquete drena la CPU.
+        camera_state['cpu_health'] = max(0, camera_state['cpu_health'] - 1)
+        
+        # Si la salud llega a 0, la cámara cae
+        if camera_state['cpu_health'] <= 0:
+            camera_state['status'] = 'DOWN'
+            camera_state['image'] = '/media/camara_rota.png'
+            response_data['msg'] = "❌ FALLO DEL SISTEMA: La CPU de la Cámara ha colapsado (CPU 0)."
+            response_data['status'] = "danger"
+
+    # 3. Devolvemos el estado de la cámara en la respuesta
+    response_data["camera_state"] = camera_state
+    
+    return response_data
 
 @app.post("/protocol_step")
 def protocol_step(req: ProtocolRequest):
@@ -115,7 +174,7 @@ def protocol_step(req: ProtocolRequest):
             if active: 
                 msg = "🛡️ Alice -> Bob [M3]: Valor d. Hacker intenta modificar, pero falla la comprobación. BLOQUEADO."
                 type_ = "success"
-                # Visualmente: Hacker intenta inyectar a Bob, pero rebota
+                # Visualmente: Hacker intenta inyectar a Bob, but rebota
                 source, target = "eve", "bob"
             else: 
                 msg = "📤 Alice -> Bob [M3]: Valor d. Bob verifica integridad de d y c. OK."
