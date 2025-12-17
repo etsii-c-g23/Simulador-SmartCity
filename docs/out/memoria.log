@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 24.1) (preloaded format=pdflatex 2025.5.29)  16 DEC 2025 19:44
+This is pdfTeX, Version 3.141592653-2.6-1.40.25 (MiKTeX 24.1) (preloaded format=pdflatex 2025.5.29)  17 DEC 2025 19:53
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -26,17 +26,13 @@ File: ot1ptm.fd 2001/06/04 font definitions for OT1/ptm.
 -- Using 210mm x 297mm (a4) paper.
 -- Using PDF output.
 \@IEEEnormalsizeunitybaselineskip=\dimen143
--- This is a 10 point document.
+-- This is an 11 point document.
 \CLASSINFOnormalsizebaselineskip=\dimen144
 \CLASSINFOnormalsizeunitybaselineskip=\dimen145
 \IEEEnormaljot=\dimen146
-LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <5> not available
+LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <6> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
-LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <5> not available
-(Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
-LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <7> not available
-(Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
-LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <7> not available
+LaTeX Font Info:    Font shape `OT1/ptm/bx/it' in size <6> not available
 (Font)              Font shape `OT1/ptm/b/it' tried instead on input line 1090.
 LaTeX Font Info:    Font shape `OT1/ptm/bx/n' in size <8> not available
 (Font)              Font shape `OT1/ptm/b/n' tried instead on input line 1090.
@@ -705,36 +701,58 @@ Package: enumitem 2025/02/06 v3.11 Customized lists
 \enit@inbox=\box73
 \enit@count@id=\count348
 \enitdp@description=\count349
+) (C:\Users\Fran\AppData\Local\Programs\MiKTeX\tex/latex/algorithms\algorithm.sty
+Package: algorithm 2009/08/24 v0.1 Document Style `algorithm' - floating environment
+\@float@every@algorithm=\toks49
+\c@algorithm=\count350
+) (C:\Users\Fran\AppData\Local\Programs\MiKTeX\tex/latex/algorithmicx\algpseudocode.sty
+Package: algpseudocode 
+ (C:\Users\Fran\AppData\Local\Programs\MiKTeX\tex/latex/algorithmicx\algorithmicx.sty
+Package: algorithmicx 2005/04/27 v1.2 Algorithmicx
+
+Document Style algorithmicx 1.2 - a greatly improved `algorithmic' style
+\c@ALG@line=\count351
+\c@ALG@rem=\count352
+\c@ALG@nested=\count353
+\ALG@tlm=\skip64
+\ALG@thistlm=\skip65
+\c@ALG@Lnr=\count354
+\c@ALG@blocknr=\count355
+\c@ALG@storecount=\count356
+\c@ALG@tmpcounter=\count357
+\ALG@tmplength=\skip66
 )
-Package hyperref Info: Option `colorlinks' set `true' on input line 38.
+Document Style - pseudocode environments for use with the `algorithmicx' style
+)
+Package hyperref Info: Option `colorlinks' set `true' on input line 46.
  (c:\Users\Fran\Desktop\SmartCity\docs\out\memoria.aux
 LaTeX Info: Redefining \. on input line 11.
 LaTeX Info: Redefining \% on input line 11.
 )
 \openout1 = `memoria.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 71.
-LaTeX Font Info:    ... okay on input line 71.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 71.
-LaTeX Font Info:    ... okay on input line 71.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 71.
-LaTeX Font Info:    ... okay on input line 71.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 71.
-LaTeX Font Info:    ... okay on input line 71.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 71.
-LaTeX Font Info:    ... okay on input line 71.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 71.
-LaTeX Font Info:    ... okay on input line 71.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 71.
-LaTeX Font Info:    ... okay on input line 71.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 71.
-LaTeX Font Info:    ... okay on input line 71.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 71.
-LaTeX Font Info:    ... okay on input line 71.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 79.
+LaTeX Font Info:    ... okay on input line 79.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 79.
+LaTeX Font Info:    ... okay on input line 79.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 79.
+LaTeX Font Info:    ... okay on input line 79.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 79.
+LaTeX Font Info:    ... okay on input line 79.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 79.
+LaTeX Font Info:    ... okay on input line 79.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 79.
+LaTeX Font Info:    ... okay on input line 79.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 79.
+LaTeX Font Info:    ... okay on input line 79.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 79.
+LaTeX Font Info:    ... okay on input line 79.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 79.
+LaTeX Font Info:    ... okay on input line 79.
 
--- Lines per column: 64 (approximate, difference = 4.77686pt).
-LaTeX Info: Redefining \. on input line 71.
-LaTeX Info: Redefining \% on input line 71.
+-- Lines per column: 57 (approximate, difference = 9.85478pt).
+LaTeX Info: Redefining \. on input line 79.
+LaTeX Info: Redefining \% on input line 79.
 *geometry* driver: auto-detecting
 *geometry* detected driver: pdftex
 *geometry* verbose mode - [ preamble ] result:
@@ -751,15 +769,15 @@ LaTeX Info: Redefining \% on input line 71.
 * \textheight=772.77686pt
 * \oddsidemargin=-36.135pt
 * \evensidemargin=-36.135pt
-* \topmargin=-66.7026pt
+* \topmargin=-66.34454pt
 * \headheight=12.0pt
-* \headsep=18.56761pt
-* \topskip=12.0pt
-* \footskip=65.62053pt
+* \headsep=18.20955pt
+* \topskip=13.3846pt
+* \footskip=67.00536pt
 * \marginparwidth=284.52756pt
 * \marginparsep=10.0pt
 * \columnsep=12.0pt
-* \skip\footins=10.79993pt plus 4.79993pt minus 2.39996pt
+* \skip\footins=12.04605pt plus 5.35374pt minus 2.67686pt
 * \hoffset=0.0pt
 * \voffset=0.0pt
 * \mag=1000
@@ -769,20 +787,20 @@ LaTeX Info: Redefining \% on input line 71.
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-\c@lstlisting=\count350
+\c@lstlisting=\count358
 (C:\Users\Fran\AppData\Local\Programs\MiKTeX\tex/context/base/mkii\supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count351
+\scratchcounter=\count359
 \scratchdimen=\dimen338
 \scratchbox=\box74
-\nofMPsegments=\count352
-\nofMParguments=\count353
-\everyMPshowfont=\toks49
-\MPscratchCnt=\count354
+\nofMPsegments=\count360
+\nofMParguments=\count361
+\everyMPshowfont=\toks50
+\MPscratchCnt=\count362
 \MPscratchDim=\dimen339
-\MPnumerator=\count355
-\makeMPintoPDFobject=\count356
-\everyMPtoPDFconversion=\toks50
+\MPnumerator=\count363
+\makeMPintoPDFobject=\count364
+\everyMPtoPDFconversion=\toks51
 ) (C:\Users\Fran\AppData\Local\Programs\MiKTeX\tex/latex/epstopdf-pkg\epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
 Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
@@ -792,7 +810,7 @@ File: epstopdf-sys.cfg 2021/03/18 v2.0 Configuration of epstopdf for MiKTeX
 Package caption Info: Begin \AtBeginDocument code.
 Package caption Info: hyperref package is loaded.
 Package caption Info: End \AtBeginDocument code.
-Package hyperref Info: Link coloring ON on input line 71.
+Package hyperref Info: Link coloring ON on input line 79.
  (c:\Users\Fran\Desktop\SmartCity\docs\out\memoria.out) (c:\Users\Fran\Desktop\SmartCity\docs\out\memoria.out)
 \@outlinefile=\write4
 \openout4 = `memoria.out'.
@@ -800,23 +818,137 @@ Package hyperref Info: Link coloring ON on input line 71.
  (c:\Users\Fran\Desktop\SmartCity\docs\out\memoria.toc
 LaTeX Info: Redefining \. on input line 1.
 LaTeX Info: Redefining \% on input line 1.
+LaTeX Font Info:    Calculating math sizes for size <11> on input line 3.
 )
 \tf@toc=\write5
 \openout5 = `memoria.toc'.
 
- [1{C:/Users/Fran/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map}{C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/base/8r.enc}] [2]
-<img/algoritmo1.png, id=136, 252.945pt x 216.81pt>
+ [1{C:/Users/Fran/AppData/Local/MiKTeX/fonts/map/pdftex/pdftex.map}{C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/enc/dvips/base/8r.enc}] [2] [3]
+Package hyperref Info: bookmark level for unknown algorithm defaults to 0 on input line 236.
+ [4] [5]
+<img/escenario1_flooding.png, id=184, 614.89725pt x 255.95625pt>
+File: img/escenario1_flooding.png Graphic file (type png)
+<use img/escenario1_flooding.png>
+Package pdftex.def Info: img/escenario1_flooding.png  used on input line 314.
+(pdftex.def)             Requested size: 420.19191pt x 174.91107pt.
+<img/escenario1_logs.png, id=187, 418.56375pt x 184.2885pt>
+File: img/escenario1_logs.png Graphic file (type png)
+<use img/escenario1_logs.png>
+Package pdftex.def Info: img/escenario1_logs.png  used on input line 323.
+(pdftex.def)             Requested size: 367.6649pt x 161.8763pt.
+<img/escenario1_colapso.png, id=189, 606.46574pt x 245.718pt>
+File: img/escenario1_colapso.png Graphic file (type png)
+<use img/escenario1_colapso.png>
+Package pdftex.def Info: img/escenario1_colapso.png  used on input line 332.
+(pdftex.def)             Requested size: 420.19191pt x 170.25047pt.
+ [6 <./img/escenario1_flooding.png> <./img/escenario1_logs.png>]
+LaTeX Font Info:    Trying to load font information for OT1+pcr on input line 340.
+ (C:\Users\Fran\AppData\Local\Programs\MiKTeX\tex/latex/psnfss\ot1pcr.fd
+File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
+)
+
+Package caption Warning: \label without proper reference on input line 354.
+See the caption package documentation for explanation.
+
+
+LaTeX Warning: Reference `fig:fase1' on page 7 undefined on input line 340.
+
+<img/escenario2_envio1.png, id=200, 233.673pt x 233.07076pt>
+File: img/escenario2_envio1.png Graphic file (type png)
+<use img/escenario2_envio1.png>
+Package pdftex.def Info: img/escenario2_envio1.png  used on input line 346.
+(pdftex.def)             Requested size: 252.11194pt x 251.46014pt.
+<img/escenario2_logs1.png, id=201, 310.761pt x 97.5645pt>
+File: img/escenario2_logs1.png Graphic file (type png)
+<use img/escenario2_logs1.png>
+Package pdftex.def Info: img/escenario2_logs1.png  used on input line 351.
+(pdftex.def)             Requested size: 252.11194pt x 79.15334pt.
+
+Package caption Warning: \label without proper reference on input line 371.
+See the caption package documentation for explanation.
+
+
+LaTeX Warning: Reference `fig:fase2' on page 7 undefined on input line 357.
+
+<img/escenario2_envio2.png, id=203, 230.0595pt x 230.0595pt>
+File: img/escenario2_envio2.png Graphic file (type png)
+<use img/escenario2_envio2.png>
+Package pdftex.def Info: img/escenario2_envio2.png  used on input line 363.
+(pdftex.def)             Requested size: 252.11194pt x 252.12192pt.
+<img/escenario2_logs2.png, id=204, 404.712pt x 97.5645pt>
+File: img/escenario2_logs2.png Graphic file (type png)
+<use img/escenario2_logs2.png>
+Package pdftex.def Info: img/escenario2_logs2.png  used on input line 368.
+(pdftex.def)             Requested size: 252.11194pt x 60.77667pt.
+[7 <./img/escenario1_colapso.png> <./img/escenario2_envio1.png> <./img/escenario2_logs1.png>]
+
+Package caption Warning: \label without proper reference on input line 388.
+See the caption package documentation for explanation.
+
+
+LaTeX Warning: Reference `fig:fase3' on page 8 undefined on input line 374.
+
+<img/escenario2_envio3.png, id=217, 221.02576pt x 230.0595pt>
+File: img/escenario2_envio3.png Graphic file (type png)
+<use img/escenario2_envio3.png>
+Package pdftex.def Info: img/escenario2_envio3.png  used on input line 380.
+(pdftex.def)             Requested size: 252.11194pt x 262.425pt.
+<img/escenario2_logs3.png, id=218, 407.72325pt x 127.677pt>
+File: img/escenario2_logs3.png Graphic file (type png)
+<use img/escenario2_logs3.png>
+Package pdftex.def Info: img/escenario2_logs3.png  used on input line 385.
+(pdftex.def)             Requested size: 252.11194pt x 78.9485pt.
+
+Package caption Warning: \label without proper reference on input line 405.
+See the caption package documentation for explanation.
+
+
+LaTeX Warning: Reference `fig:fase4' on page 8 undefined on input line 391.
+
+<img/escenario2_envio4.png, id=220, 221.628pt x 230.0595pt>
+File: img/escenario2_envio4.png Graphic file (type png)
+<use img/escenario2_envio4.png>
+Package pdftex.def Info: img/escenario2_envio4.png  used on input line 397.
+(pdftex.def)             Requested size: 252.11194pt x 261.70537pt.
+<img/escenario2_logs4.png, id=221, 407.72325pt x 154.176pt>
+File: img/escenario2_logs4.png Graphic file (type png)
+<use img/escenario2_logs4.png>
+Package pdftex.def Info: img/escenario2_logs4.png  used on input line 402.
+(pdftex.def)             Requested size: 252.11194pt x 95.33403pt.
+[8 <./img/escenario2_envio2.png> <./img/escenario2_logs2.png> <./img/escenario2_envio3.png> <./img/escenario2_logs3.png>]
+
+Package caption Warning: \label without proper reference on input line 422.
+See the caption package documentation for explanation.
+
+
+LaTeX Warning: Reference `fig:fase5' on page 9 undefined on input line 408.
+
+<img/escenario2_envio5.png, id=233, 225.84375pt x 227.04825pt>
+File: img/escenario2_envio5.png Graphic file (type png)
+<use img/escenario2_envio5.png>
+Package pdftex.def Info: img/escenario2_envio5.png  used on input line 414.
+(pdftex.def)             Requested size: 252.11194pt x 253.4712pt.
+<img/escenario2_logs5.png, id=234, 413.74574pt x 171.64125pt>
+File: img/escenario2_logs5.png Graphic file (type png)
+<use img/escenario2_logs5.png>
+Package pdftex.def Info: img/escenario2_logs5.png  used on input line 419.
+(pdftex.def)             Requested size: 252.11194pt x 104.58838pt.
+<img/algoritmo1.png, id=236, 252.945pt x 216.81pt>
 File: img/algoritmo1.png Graphic file (type png)
 <use img/algoritmo1.png>
-Package pdftex.def Info: img/algoritmo1.png  used on input line 226.
-(pdftex.def)             Requested size: 420.19191pt x 360.17247pt.
- [3]
-<img/algoritmo2.png, id=142, 498.663pt x 202.95825pt>
-File: img/algoritmo2.png Graphic file (type png)
-<use img/algoritmo2.png>
-Package pdftex.def Info: img/algoritmo2.png  used on input line 254.
-(pdftex.def)             Requested size: 420.19191pt x 171.01952pt.
- [4 <./img/algoritmo1.png>] [5 <./img/algoritmo2.png>]
+Package pdftex.def Info: img/algoritmo1.png  used on input line 431.
+(pdftex.def)             Requested size: 393.9284pt x 337.65982pt.
+[9 <./img/escenario2_envio4.png> <./img/escenario2_logs4.png> <./img/escenario2_envio5.png> <./img/escenario2_logs5.png>]
+File: img/algoritmo1.png Graphic file (type png)
+<use img/algoritmo1.png>
+Package pdftex.def Info: img/algoritmo1.png  used on input line 442.
+(pdftex.def)             Requested size: 393.9284pt x 337.65982pt.
+ [10 <./img/algoritmo1.png>]
+Overfull \hbox (15.10803pt too wide) in paragraph at lines 475--488
+ [][] 
+ []
+
+[11]
 
 ** Conference Paper **
 Before submitting the final camera ready copy, remember to:
@@ -828,7 +960,7 @@ Before submitting the final camera ready copy, remember to:
  uses only Type 1 fonts and that every step in the generation
  process uses the appropriate paper size.
 
-[6] (c:\Users\Fran\Desktop\SmartCity\docs\out\memoria.aux
+[12] (c:\Users\Fran\Desktop\SmartCity\docs\out\memoria.aux
 LaTeX Info: Redefining \. on input line 11.
 LaTeX Info: Redefining \% on input line 11.
 )
@@ -836,21 +968,25 @@ LaTeX Info: Redefining \% on input line 11.
 LaTeX2e <2023-11-01> patch level 1
 L3 programming layer <2024-01-04>
  ***********
+
+
+LaTeX Warning: There were undefined references.
+
 Package rerunfilecheck Info: File `memoria.out' has not changed.
-(rerunfilecheck)             Checksum: EE6FA455B482C1281FAD6A36CEF33529;3487.
+(rerunfilecheck)             Checksum: 5A628675F992E1FB8A9BFC0D40ED212A;4787.
  ) 
 Here is how much of TeX's memory you used:
- 27101 strings out of 474486
- 505536 string characters out of 5744227
- 1952542 words of memory out of 5000000
- 48891 multiletter control sequences out of 15000+600000
- 594002 words of font info for 98 fonts, out of 8000000 for 9000
+ 27859 strings out of 474486
+ 518956 string characters out of 5744227
+ 1949542 words of memory out of 5000000
+ 49607 multiletter control sequences out of 15000+600000
+ 597354 words of font info for 107 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 96i,10n,101p,806b,571s stack positions out of 10000i,1000n,20000p,200000b,200000s
-<C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi7.pfb><C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr10.pfb><C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy10.pfb><C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmb8a.pfb><C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmr8a.pfb><C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmri8a.pfb>
-Output written on c:\Users\Fran\Desktop\SmartCity\docs\out\memoria.pdf (6 pages, 235883 bytes).
+ 96i,10n,101p,805b,593s stack positions out of 10000i,1000n,20000p,200000b,200000s
+<C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi10.pfb><C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmmi8.pfb><C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr10.pfb><C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmr8.pfb><C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy10.pfb><C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/public/amsfonts/cm/cmsy8.pfb><C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/urw/courier/ucrr8a.pfb><C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmb8a.pfb><C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmr8a.pfb><C:/Users/Fran/AppData/Local/Programs/MiKTeX/fonts/type1/urw/times/utmri8a.pfb>
+Output written on c:\Users\Fran\Desktop\SmartCity\docs\out\memoria.pdf (12 pages, 522065 bytes).
 PDF statistics:
- 228 PDF objects out of 1000 (max. 8388607)
- 59 named destinations out of 1000 (max. 500000)
- 183 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 344 PDF objects out of 1000 (max. 8388607)
+ 80 named destinations out of 1000 (max. 500000)
+ 283 words of extra memory for PDF output out of 10000 (max. 10000000)
 
