@@ -71,8 +71,10 @@ PROTOCOL_MODE_SECURE = 'mitm_secure'
 PROTOCOL_MODE_INSECURE = 'mitm_insecure'
 
 # Pasos del protocolo
-SECURE_PROTOCOL_STEPS = 6
-INSECURE_PROTOCOL_STEPS = 4
+SECURE_PROTOCOL_STEPS_NO_ATTACK = 6  # Sin MITM activo
+SECURE_PROTOCOL_STEPS_WITH_ATTACK = 12  # Con MITM activo
+INSECURE_PROTOCOL_STEPS_NO_ATTACK = 4  # Sin MITM activo
+INSECURE_PROTOCOL_STEPS_WITH_ATTACK = 10  # Con MITM activo
 
 # Umbrales de RSSI
 RSSI_ANOMALY_THRESHOLD = 10  # Diferencia máxima permitida en RSSI
@@ -294,9 +296,9 @@ class ProtocolMessage:
 
 def get_secure_protocol_message(step: int, mitm_active: bool, params: dict = None) -> ProtocolMessage:
     """
-    Genera el mensaje para un paso del protocolo SEGURO (6 pasos).
+    Genera el mensaje para un paso del protocolo SEGURO.
     
-    Pasos:
+    SIN ATAQUE ACTIVO (6 pasos):
     1. Alice -> Bob: c (commit de mA)
     2. Bob -> Alice: mB = IDA || IDB || gb || NB
     3. Alice -> Bob: mA = IDA || ga || NA + d (decommit)
@@ -304,10 +306,24 @@ def get_secure_protocol_message(step: int, mitm_active: bool, params: dict = Non
     5. Bob -> Alice: AuthB = MAC(KBA, SB || TS || LT)
     6. Verificación mutua exitosa
     
-    Con MITM: Hugo intenta interceptar pero la autenticación lo detecta.
+    CON ATAQUE ACTIVO (12 pasos):
+    1. Alice -> Hugo: cA (Hugo intercepta)
+    2. Hugo -> Bob: cE (Hugo suplanta a Alice)
+    3. Bob -> Hugo: mB = IDB || gb || NB
+    4. Hugo modifica mB a mB' (reemplaza gb con ge)
+    5. Hugo -> Alice: mB'
+    6. Alice -> Hugo: dA
+    7. Hugo -> Bob: dE
+    8. Alice calcula: SA = NA ⊕ NB
+    9. Bob calcula: SB = NA ⊕ NB
+    10. Alice -> Hugo: AuthA = TS || LT || MAC(KAE, SA || TS || LT)
+    11. Bob -> Hugo: AuthB = MAC(KBE, SB || TS || LT)
+    12. Hugo intenta manipular autenticadores pero falla (MITM detectado)
     """
     if params is None:
         params = {}
+    
+    import time
     
     alice = params.get('alice', {})
     bob = params.get('bob', {})
@@ -319,89 +335,217 @@ def get_secure_protocol_message(step: int, mitm_active: bool, params: dict = Non
     gb = modExp(g, bob.get('b', 0), p) if p > 0 else 0
     ge = modExp(g, hugo.get('e', 0), p) if p > 0 else 0
 
-    commit_c = f"hash({alice.get('mac', 'IDA')}||{ga}||{alice.get('NA', 0)})"
-    decommit_d = f"open({commit_c}) => {alice.get('mac', 'IDA')}||{ga}||{alice.get('NA', 0)}"
+    KAE = modExp(ga, hugo.get('e', 0), p) if p > 0 and ga > 0 else 0
+    KBE = modExp(gb, hugo.get('e', 0), p) if p > 0 and gb > 0 else 0
+
+    # Generar TS (Timestamp) y LT (Lifetime) para seguridad
+    ts = int(time.time())
+    lt = 3600  # 1 hora de validez
+
+    commit_ca = f"hash({alice.get('mac', 'IDA')}||{ga}||{alice.get('NA', 0)})"
+    commit_ce = f"hash({alice.get('mac', 'IDA')}||{ge}||{hugo.get('NE', 0)})"
+    decommit_da = f"open({commit_ca}) => {alice.get('mac', 'IDA')}||{ga}||{alice.get('NA', 0)}"
     
-    if step == 1:
-        return ProtocolMessage(
-            "📤 Alice -> Bob [M1]: c (commit de mA)",
-            "info", "alice", "bob",
-            {"c": commit_c, "mA": f"{alice.get('mac', 'IDA')}||{ga}||{alice.get('NA', 0)}"}
-        )
-    
-    elif step == 2:
-        return ProtocolMessage(
-            "📤 Bob -> Alice [M2]: mB = IDA || IDB || gb || NB",
-            "info", "bob", "alice",
-            {"mB": f"{alice.get('mac', 'IDA')} || {bob.get('mac', 'IDB')} || {gb} || {bob.get('NB', 0)}"}
-        )
-    
-    elif step == 3:
-        return ProtocolMessage(
-            "📤 Alice -> Bob [M3]: mA = IDA || ga || NA (d abre el commit c)",
-            "info", "alice", "bob",
-            {
-                "mA": f"{alice.get('mac', 'IDA')} || {ga} || {alice.get('NA', 0)}",
-                "c": commit_c,
-                "d": decommit_d
-            }
-        )
-    
-    elif step == 4:
-        SA = xorInt(alice.get('NA', 0), bob.get('NB', 0))
-        KAB = modExp(g, alice.get('a', 0) * bob.get('b', 0), p) if p > 0 else 0
-        return ProtocolMessage(
-            "📤 Alice -> Bob [M4]: AuthA = TS || LT || MAC(KAB, SA || TS || LT)",
-            "info", "alice", "bob",
-            {
-                "SA": SA,
-                "KAB": KAB,
-                "AuthA": f"MAC({KAB}, {SA} || TS || LT)"
-            }
-        )
-    
-    elif step == 5:
-        SB = xorInt(alice.get('NA', 0), bob.get('NB', 0))  # Igual a SA
-        KAB = modExp(g, alice.get('a', 0) * bob.get('b', 0), p) if p > 0 else 0
-        return ProtocolMessage(
-            "📤 Bob -> Alice [M5]: AuthB = MAC(KBA, SB || TS || LT)",
-            "info", "bob", "alice",
-            {
-                "SB": SB,
-                "KAB": KAB,
-                "AuthB": f"MAC({KAB}, {SB} || TS || LT)"
-            }
-        )
-    
-    elif step == 6:
-        if mitm_active:
+    # ===== SIN ATAQUE ACTIVO (6 pasos) =====
+    if not mitm_active:
+        if step == 1:
             return ProtocolMessage(
-                "🛡️ BLOQUEADO: Verificación de autenticidad falla. Hugo no tiene la clave correcta.",
-                "success", "bob", "alice",
-                {"result": "✅ MITM detectado y prevenido"}
+                "📤 Alice -> Bob [M1]: cA (commit de mA)",
+                "info", "alice", "bob",
+                {"c": commit_ca, "mA": f"{alice.get('mac', 'IDA')}||{ga}||{alice.get('NA', 0)}"}
             )
-        else:
+        
+        elif step == 2:
             return ProtocolMessage(
-                "✅ CANAL SEGURO: Autenticación mutua exitosa. Claves verificadas.",
+                "📤 Bob -> Alice [M2]: mB = IDA || IDB || gb || NB",
+                "info", "bob", "alice",
+                {"mB": f"{alice.get('mac', 'IDA')} || {bob.get('mac', 'IDB')} || {gb} || {bob.get('NB', 0)}"}
+            )
+        
+        elif step == 3:
+            return ProtocolMessage(
+                "📤 Alice -> Bob [M3]: dA => mA = IDA || ga || NA",
+                "info", "alice", "bob",
+                {
+                    "mA": f"{alice.get('mac', 'IDA')} || {ga} || {alice.get('NA', 0)}",
+                    "c": commit_ca,
+                    "dA": decommit_da
+                }
+            )
+        
+        elif step == 4:
+            SA = xorInt(alice.get('NA', 0), bob.get('NB', 0))
+            KAB = modExp(g, alice.get('a', 0) * bob.get('b', 0), p) if p > 0 else 0
+            return ProtocolMessage(
+                f"📤 Alice -> Bob [M4]: AuthA = {ts} || {lt} || MAC(KAB, SA || {ts} || {lt})",
+                "info", "alice", "bob",
+                {
+                    "SA": SA,
+                    "KAB": KAB,
+                    "TS": ts,
+                    "LT": lt,
+                    "AuthA": f"MAC({KAB}, {SA} || {ts} || {lt})"
+                }
+            )
+        
+        elif step == 5:
+            SB = xorInt(alice.get('NA', 0), bob.get('NB', 0))
+            KAB = modExp(g, alice.get('a', 0) * bob.get('b', 0), p) if p > 0 else 0
+            return ProtocolMessage(
+                f"📤 Bob -> Alice [M5]: AuthB = MAC(KAB, {SB} || {ts} || {lt})",
+                "info", "bob", "alice",
+                {
+                    "SB": SB,
+                    "KAB": KAB,
+                    "TS": ts,
+                    "LT": lt,
+                    "AuthB": f"MAC({KAB}, {SB} || {ts} || {lt})"
+                }
+            )
+        
+        elif step == 6:
+            return ProtocolMessage(
+                "✅ CANAL SEGURO: Autenticación mutua exitosa. Claves verificadas. TS y LT validados.",
                 "success", "bob", "alice",
-                {"result": "Comunicación segura establecida"}
+                {"result": "Comunicación segura establecida", "TS": ts, "LT": lt}
+            )
+
+    # ===== CON ATAQUE ACTIVO (11 pasos) =====
+    else:
+        if step == 1:
+            return ProtocolMessage(
+                "📤 Alice -> Hugo [M1]: cA (Hugo intercepta)",
+                "info", "alice", "hugo",
+                {"cA": commit_ca, "mA": f"{alice.get('mac', 'IDA')} || {ga} || {alice.get('NA', 0)}"}
+            )
+
+        elif step == 2:
+            return ProtocolMessage(
+                "⚠️ Hugo -> Bob [M2]: cE (Hugo suplanta a Alice)",
+                "danger", "hugo", "bob",
+                {"cE": commit_ce, "mE": f"{alice.get('mac', 'IDA')} || {ge} || {hugo.get('NE', 0)}"}
+            )
+
+        elif step == 3:
+            return ProtocolMessage(
+                "📤 Bob -> Hugo [M3]: mB = IDB || gb || NB",
+                "info", "bob", "hugo",
+                {"mB": f"{bob.get('mac', 'IDB')} || {gb} || {bob.get('NB', 0)}"}
+            )
+
+        elif step == 4:
+            return ProtocolMessage(
+                "⚠️ Hugo modifica mB [M4]: mB' = IDB || ge || NB (reemplaza gb con ge)",
+                "danger", "hugo", "hugo",
+                {
+                    "mB": f"{bob.get('mac', 'IDB')} || {gb} || {bob.get('NB', 0)}",
+                    "mBp": f"{bob.get('mac', 'IDB')} || {ge} || {bob.get('NB', 0)}"
+                }
+            )
+
+        elif step == 5:
+            return ProtocolMessage(
+                "⚠️ Hugo -> Alice [M5]: mB' (Hugo suplanta a Bob)",
+                "danger", "hugo", "alice",
+                {"mBp": f"{bob.get('mac', 'IDB')} || {ge} || {bob.get('NB', 0)}"}
+            )
+
+        elif step == 6:
+            return ProtocolMessage(
+                "📤 Alice -> Hugo [M6]: dA => mA = IDA || ga || NA",
+                "info", "alice", "hugo",
+                {"dA": decommit_da, "cA": commit_ca}
+            )
+
+        elif step == 7:
+            decommit_de = f"open({commit_ce}) => {alice.get('mac', 'IDA')}||{ge}||{hugo.get('NE', 0)}"
+            return ProtocolMessage(
+                "⚠️ Hugo -> Bob [M7]: dE => mE = IDA || ge || NE",
+                "danger", "hugo", "bob",
+                {"dE": decommit_de, "cE": commit_ce}
+            )
+
+        elif step == 8:
+            SA = xorInt(alice.get('NA', 0), bob.get('NB', 0))
+            return ProtocolMessage(
+                f"📤 Alice calcula [M8]: SA = NA ⊕ NB = {SA}",
+                "info", "alice", "alice",
+                {"SA": SA}
+            )
+
+        elif step == 9:
+            SB = xorInt(alice.get('NA', 0), bob.get('NB', 0))
+            return ProtocolMessage(
+                f"📤 Bob calcula [M9]: SB = NA ⊕ NB = {SB}",
+                "info", "bob", "bob",
+                {"SB": SB}
+            )
+
+        elif step == 10:
+            SA = xorInt(alice.get('NA', 0), bob.get('NB', 0))
+            return ProtocolMessage(
+                f"📤 Alice -> Hugo [M10]: AuthA = {ts} || {lt} || MAC(KAE, {SA} || {ts} || {lt})",
+                "info", "alice", "hugo",
+                {
+                    "SA": SA,
+                    "KAE": KAE,
+                    "TS": ts,
+                    "LT": lt,
+                    "AuthA": f"MAC({KAE}, {SA} || {ts} || {lt})"
+                }
+            )
+
+        elif step == 11:
+            SB = xorInt(alice.get('NA', 0), bob.get('NB', 0))
+            return ProtocolMessage(
+                f"📤 Bob -> Hugo [M11]: AuthB = MAC(KBE, {SB} || {ts} || {lt})",
+                "info", "bob", "hugo",
+                {
+                    "SB": SB,
+                    "KBE": KBE,
+                    "TS": ts,
+                    "LT": lt,
+                    "AuthB": f"MAC({KBE}, {SB} || {ts} || {lt})"
+                }
+            )
+
+        elif step == 12:
+            return ProtocolMessage(
+                "🛡️ BLOQUEADO [M12]: Hugo no puede falsificar el MAC correcto. KAE ≠ KBE. MITM detectado y prevenido.",
+                "success", "hugo", "alice",
+                {
+                    "result": "✅ MITM detectado y prevenido",
+                    "reason": "Hugo no puede crear MACs válidos porque KAE ≠ KBE",
+                    "KAE": KAE,
+                    "KBE": KBE,
+                    "TS": ts,
+                    "LT": lt
+                }
             )
     
     return ProtocolMessage("Paso inválido", "error")
 
 def get_insecure_protocol_message(step: int, mitm_active: bool, params: dict = None) -> ProtocolMessage:
     """
-    Genera el mensaje para un paso del protocolo INSEGURO (4 pasos).
+    Genera el mensaje para un paso del protocolo INSEGURO.
     
-    Pasos:
+    SIN ATAQUE ACTIVO (4 pasos):
     1. Alice -> Bob: mA = IDA || ga || NA
-    2. Hugo intercepta y suplanta: mE = IDA || ge || NE (a Bob)
-    3. Bob -> Alice: mB = IDB || gb || NB
-    4. Hugo intercepta y suplanta: mE = IDB || ge || NE (a Alice)
+    2. Bob -> Alice: mB = IDB || gb || NB
+    3. Alice -> Bob: d (decommit)
+    4. Completado: SA = NA ⊕ NB
     
-    Luego ambos calculan claves:
-    - Alice y Hugo comparten: KAE = g^(a*e) mod p
-    - Hugo y Bob comparten: KBE = g^(b*e) mod p
+    CON ATAQUE ACTIVO (10 pasos):
+    1. Alice -> Hugo: commit c (Hugo intercepta la request a Bob)
+    2. Hugo -> Bob: suplanta a Alice enviando commit ce
+    3. Bob -> Hugo: mB = IDB || gb || NB
+    4. Hugo -> Alice: mB' = IDB || ge || NB
+    5. Alice -> Hugo: dA y se obtiene mA
+    6. Hugo -> Bob: dE
+    7. Alice -> Hugo: SA = NA ⊕ NE
+    8. Bob -> Hugo: SB = NB ⊕ NE
+    9. Hugo -> Alice: SAE = NA ⊕ NE
+    10. Hugo -> Bob: SBE = NB ⊕ NE, MITM completado
     """
     if params is None:
         params = {}
@@ -420,76 +564,124 @@ def get_insecure_protocol_message(step: int, mitm_active: bool, params: dict = N
     KBE = modExp(gb, hugo.get('e', 0), p) if p > 0 and gb > 0 else 0
 
     commit_c = f"hash({alice.get('mac', 'IDA')}||{ga}||{alice.get('NA', 0)})"
-    decommit_d = f"open({commit_c}) => {alice.get('mac', 'IDA')}||{ga}||{alice.get('NA', 0)}"
+    commit_ce = f"hash({alice.get('mac', 'IDA')}||{ge}||{hugo.get('NE', 0)})"
+    decommit_da = f"open({commit_c}) => {alice.get('mac', 'IDA')}||{ga}||{alice.get('NA', 0)}"
+    decommit_de = f"open({commit_ce}) => {alice.get('mac', 'IDA')}||{ge}||{hugo.get('NE', 0)}"
 
-    if step == 1:
-        if mitm_active:
+    # ===== SIN ATAQUE ACTIVO (4 pasos) =====
+    if not mitm_active:
+        if step == 1:
             return ProtocolMessage(
-                "⚠️ HUGO intercepta M1 y suplanta ante Bob: mE = IDA || ge || NE (Hugo usa la MAC de Alice)",
-                "danger", "hugo", "bob",
-                {"mE": f"{alice.get('mac', 'IDA')} || {ge} || {hugo.get('NE', 0)}"}
+                "📤 Alice -> Bob [M1]: c (commit)",
+                "info", "alice", "bob",
+                {"c": commit_c, "mA": f"{alice.get('mac', 'IDA')} || {ga} || {alice.get('NA', 0)}"}
             )
 
-        return ProtocolMessage(
-            "📤 Alice -> Bob [M1]: c (commit de mA)",
-            "info", "alice", "bob",
-            {"c": commit_c, "mA": f"{alice.get('mac', 'IDA')} || {ga} || {alice.get('NA', 0)}"}
-        )
-
-    elif step == 2:
-        if mitm_active:
+        elif step == 2:
             return ProtocolMessage(
-                "📤 Bob -> Hugo: mB = IDB || gb || NB (respuesta a la suplantación)",
+                "📤 Bob -> Alice [M2]: mB = IDB || gb || NB",
+                "info", "bob", "alice",
+                {"mB": f"{bob.get('mac', 'IDB')} || {gb} || {bob.get('NB', 0)}"}
+            )
+
+        elif step == 3:
+            return ProtocolMessage(
+                "📤 Alice -> Bob [M3]: dA => mA = IDA || ga || NA",
+                "info", "alice", "bob",
+                {"dA": decommit_da, "c": commit_c}
+            )
+
+        elif step == 4:
+            SA = xorInt(alice.get('NA', 0), bob.get('NB', 0))
+            SB = xorInt(alice.get('NA', 0), bob.get('NB', 0))
+            return ProtocolMessage(
+                "✅ Autenticación mutua completada: SA = SB = NA ⊕ NB",
+                "success", "alice", "bob",
+                {"SA": SA, "SB": SB}
+            )
+
+    # ===== CON ATAQUE ACTIVO (10 pasos) =====
+    else:
+        if step == 1:
+            return ProtocolMessage(
+                "📤 Alice -> Hugo [M1]: c (Hugo intercepta)",
+                "info", "alice", "hugo",
+                {"c": commit_c, "mA": f"{alice.get('mac', 'IDA')} || {ga} || {alice.get('NA', 0)}"}
+            )
+
+        elif step == 2:
+            return ProtocolMessage(
+                "⚠️ Hugo -> Bob [M2]: ce (Hugo suplanta a Alice)",
+                "danger", "hugo", "bob",
+                {"ce": commit_ce, "mE": f"{alice.get('mac', 'IDA')} || {ge} || {hugo.get('NE', 0)}"}
+            )
+
+        elif step == 3:
+            return ProtocolMessage(
+                "📤 Bob -> Hugo [M3]: mB = IDB || gb || NB",
                 "info", "bob", "hugo",
                 {"mB": f"{bob.get('mac', 'IDB')} || {gb} || {bob.get('NB', 0)}"}
             )
 
-        return ProtocolMessage(
-            "📤 Bob -> Alice [M2]: mB = IDA || IDB || gb || NB",
-            "info", "bob", "alice",
-            {"mB": f"{alice.get('mac', 'IDA')} || {bob.get('mac', 'IDB')} || {gb} || {bob.get('NB', 0)}"}
-        )
-
-    elif step == 3:
-        if mitm_active:
+        elif step == 4:
             return ProtocolMessage(
-                "⚠️ HUGO intercepta M2 y suplanta ante Alice: mE = IDB || ge || NE (Hugo usa la MAC de Bob)",
+                "⚠️ Hugo -> Alice [M4]: mB' = IDB || ge || NE (Hugo suplanta a Bob)",
                 "danger", "hugo", "alice",
                 {
-                    "mE_to_Alice": f"{bob.get('mac', 'IDB')} || {ge} || {hugo.get('NE', 0)}",
+                    "mBp": f"{bob.get('mac', 'IDB')} || {ge} || {hugo.get('NE', 0)}",
+                    "KAE": KAE
+                }
+            )
+
+        elif step == 5:
+            return ProtocolMessage(
+                "📤 Alice -> Hugo [M5]: dA => mA = IDA || ga || NA",
+                "info", "alice", "hugo",
+                {"dA": decommit_da, "c": commit_c}
+            )
+
+        elif step == 6:
+            return ProtocolMessage(
+                "⚠️ Hugo -> Bob [M6]: dE => mE = IDA || ge || NE",
+                "danger", "hugo", "bob",
+                {"dE": decommit_de, "ce": commit_ce}
+            )
+
+        elif step == 7:
+            SAE = xorInt(alice.get('NA', 0), hugo.get('NE', 0))
+            return ProtocolMessage(
+                "📤 Alice -> Hugo [M7]: SA = NA ⊕ NE",
+                "info", "alice", "hugo",
+                {"SA": SAE}
+            )
+
+        elif step == 8:
+            SBE = xorInt(bob.get('NB', 0), hugo.get('NE', 0))
+            return ProtocolMessage(
+                "📤 Bob -> Hugo [M8]: SB = NB ⊕ NE",
+                "info", "bob", "hugo",
+                {"SB": SBE}
+            )
+
+        elif step == 9:
+            SAE = xorInt(alice.get('NA', 0), hugo.get('NE', 0))
+            return ProtocolMessage(
+                "⚠️ Hugo -> Alice [M9]: SAE = NA ⊕ NE",
+                "danger", "hugo", "alice",
+                {"SAE": SAE}
+            )
+
+        elif step == 10:
+            SBE = xorInt(bob.get('NB', 0), hugo.get('NE', 0))
+            return ProtocolMessage(
+                "⚠️ Hugo -> Bob [M10]: SBE = NB ⊕ NE - MITM COMPLETADO",
+                "danger", "hugo", "bob",
+                {
+                    "SBE": SBE,
                     "KAE": KAE,
                     "KBE": KBE
                 }
             )
-
-        return ProtocolMessage(
-            "📤 Alice -> Bob [M3]: d (valor de apertura para c)",
-            "info", "alice", "bob",
-            {"d": decommit_d, "c": commit_c}
-        )
-
-    elif step == 4:
-        if mitm_active:
-            SB = xorInt(hugo.get('NE', 0), bob.get('NB', 0))
-            SA = xorInt(alice.get('NA', 0), hugo.get('NE', 0))
-            return ProtocolMessage(
-                "⚠️ HUGO completa el MITM: calcula KAE y KBE",
-                "danger", "hugo", "alice",
-                {
-                    "KAE": KAE,
-                    "KBE": KBE,
-                    "SAE": SA,
-                    "SBE": SB
-                }
-            )
-
-        SA = xorInt(alice.get('NA', 0), bob.get('NB', 0))
-        SB = xorInt(alice.get('NA', 0), bob.get('NB', 0))
-        return ProtocolMessage(
-            "✅ Autenticación mutua completada (inseguro): SA = SB = NA ⊕ NB",
-            "success", "alice", "bob",
-            {"SA": SA, "SB": SB}
-        )
 
     return ProtocolMessage("Paso inválido", "error")
 
@@ -557,17 +749,21 @@ def protocol_step(req: ProtocolRequest):
     
     Soporta dos modos:
     - mitm_secure: Protocolo seguro contra MITM (6 pasos)
-    - mitm_insecure: Protocolo vulnerable a MITM (4 pasos)
+    - mitm_insecure: Protocolo vulnerable a MITM
+      - Sin ataque (mitm_active=False): 4 pasos
+      - Con ataque (mitm_active=True): 6 pasos
     """
     is_secure = 'insecure' not in req.mode
     
     # Obtener mensaje del protocolo con valores calculados
     if is_secure:
         protocol_msg = get_secure_protocol_message(req.step, req.mitm_active, mitm_params)
-        max_steps = SECURE_PROTOCOL_STEPS
+        # Determinar max_steps de forma dinámica según el estado del ataque
+        max_steps = SECURE_PROTOCOL_STEPS_WITH_ATTACK if req.mitm_active else SECURE_PROTOCOL_STEPS_NO_ATTACK
     else:
         protocol_msg = get_insecure_protocol_message(req.step, req.mitm_active, mitm_params)
-        max_steps = INSECURE_PROTOCOL_STEPS
+        # Determinar max_steps de forma dinámica según el estado del ataque
+        max_steps = INSECURE_PROTOCOL_STEPS_WITH_ATTACK if req.mitm_active else INSECURE_PROTOCOL_STEPS_NO_ATTACK
     
     # Calcular siguiente paso
     next_step = req.step if req.step >= max_steps else req.step + 1
