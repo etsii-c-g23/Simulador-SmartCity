@@ -50,16 +50,9 @@ class MitmParamsRequest(BaseModel):
     """Solicitud para actualizar parámetros MITM."""
     g: int
     p: int
-    alice: dict  # {id, secret, nonce, public}
+    alice: dict  # {mac, a, NA, public}
     bob: dict
     hugo: dict
-
-class MitmCalculateRequest(BaseModel):
-    """Solicitud para calcular valores de Hugo basado en Alice y Bob."""
-    g: int
-    p: int
-    alice: dict
-    bob: dict
 
 # ==========================================
 # CONSTANTES
@@ -141,34 +134,34 @@ def xorInt(a: int, b: int) -> int:
 
 def create_initial_mitm_params():
     """Genera parámetros MITM iniciales."""
-    alice_secret = random.randint(2, DEFAULT_PRIME_P - 2)
-    bob_secret = random.randint(2, DEFAULT_PRIME_P - 2)
-    hugo_secret = random.randint(2, DEFAULT_PRIME_P - 2)
-    
-    alice_nonce = random.randint(1000, 9999)
-    bob_nonce = random.randint(1000, 9999)
-    hugo_nonce = random.randint(1000, 9999)
-    
+    alice_a = random.randint(2, DEFAULT_PRIME_P - 2)
+    bob_b = random.randint(2, DEFAULT_PRIME_P - 2)
+    hugo_e = random.randint(2, DEFAULT_PRIME_P - 2)
+
+    alice_na = random.randint(1000, 9999)
+    bob_nb = random.randint(1000, 9999)
+    hugo_ne = random.randint(1000, 9999)
+
     return {
         'g': DEFAULT_BASE_G,
         'p': DEFAULT_PRIME_P,
         'alice': {
-            'id': 'IDA',
-            'secret': alice_secret,
-            'nonce': alice_nonce,
-            'public': modExp(DEFAULT_BASE_G, alice_secret, DEFAULT_PRIME_P)
+            'mac': 'AA:BB:CC:DD:EE:01',
+            'a': alice_a,
+            'NA': alice_na,
+            'public': modExp(DEFAULT_BASE_G, alice_a, DEFAULT_PRIME_P)
         },
         'bob': {
-            'id': 'IDB',
-            'secret': bob_secret,
-            'nonce': bob_nonce,
-            'public': modExp(DEFAULT_BASE_G, bob_secret, DEFAULT_PRIME_P)
+            'mac': 'AA:BB:CC:DD:EE:02',
+            'b': bob_b,
+            'NB': bob_nb,
+            'public': modExp(DEFAULT_BASE_G, bob_b, DEFAULT_PRIME_P)
         },
         'hugo': {
-            'id': 'IDE',
-            'secret': hugo_secret,
-            'nonce': hugo_nonce,
-            'public': modExp(DEFAULT_BASE_G, hugo_secret, DEFAULT_PRIME_P)
+            'mac': 'AA:BB:CC:DD:EE:03',
+            'e': hugo_e,
+            'NE': hugo_ne,
+            'public': modExp(DEFAULT_BASE_G, hugo_e, DEFAULT_PRIME_P)
         }
     }
 
@@ -321,38 +314,42 @@ def get_secure_protocol_message(step: int, mitm_active: bool, params: dict = Non
     hugo = params.get('hugo', {})
     g = params.get('g', 0)
     p = params.get('p', 0)
-    
-    ga = modExp(g, alice.get('secret', 0), p) if p > 0 else 0
-    gb = modExp(g, bob.get('secret', 0), p) if p > 0 else 0
-    ge = modExp(g, hugo.get('secret', 0), p) if p > 0 else 0
+
+    ga = modExp(g, alice.get('a', 0), p) if p > 0 else 0
+    gb = modExp(g, bob.get('b', 0), p) if p > 0 else 0
+    ge = modExp(g, hugo.get('e', 0), p) if p > 0 else 0
+
+    commit_c = f"hash({alice.get('mac', 'IDA')}||{ga}||{alice.get('NA', 0)})"
+    decommit_d = f"open({commit_c}) => {alice.get('mac', 'IDA')}||{ga}||{alice.get('NA', 0)}"
     
     if step == 1:
         return ProtocolMessage(
-            "📤 Alice -> Bob [M1]: c (commit, hash de mA)",
+            "📤 Alice -> Bob [M1]: c (commit de mA)",
             "info", "alice", "bob",
-            {"c": f"hash(IDA || {ga} || {alice.get('nonce', 0)})"}
+            {"c": commit_c, "mA": f"{alice.get('mac', 'IDA')}||{ga}||{alice.get('NA', 0)}"}
         )
     
     elif step == 2:
         return ProtocolMessage(
             "📤 Bob -> Alice [M2]: mB = IDA || IDB || gb || NB",
             "info", "bob", "alice",
-            {"mB": f"{alice.get('id', 'IDA')} || {bob.get('id', 'IDB')} || {gb} || {bob.get('nonce', 0)}"}
+            {"mB": f"{alice.get('mac', 'IDA')} || {bob.get('mac', 'IDB')} || {gb} || {bob.get('NB', 0)}"}
         )
     
     elif step == 3:
         return ProtocolMessage(
-            "📤 Alice -> Bob [M3]: mA = IDA || ga || NA (decommit: verifica c)",
+            "📤 Alice -> Bob [M3]: mA = IDA || ga || NA (d abre el commit c)",
             "info", "alice", "bob",
             {
-                "mA": f"{alice.get('id', 'IDA')} || {ga} || {alice.get('nonce', 0)}",
-                "d": "open(c) ✓"
+                "mA": f"{alice.get('mac', 'IDA')} || {ga} || {alice.get('NA', 0)}",
+                "c": commit_c,
+                "d": decommit_d
             }
         )
     
     elif step == 4:
-        SA = xorInt(alice.get('nonce', 0), bob.get('nonce', 0))
-        KAB = modExp(g, alice.get('secret', 0) * bob.get('secret', 0), p) if p > 0 else 0
+        SA = xorInt(alice.get('NA', 0), bob.get('NB', 0))
+        KAB = modExp(g, alice.get('a', 0) * bob.get('b', 0), p) if p > 0 else 0
         return ProtocolMessage(
             "📤 Alice -> Bob [M4]: AuthA = TS || LT || MAC(KAB, SA || TS || LT)",
             "info", "alice", "bob",
@@ -364,8 +361,8 @@ def get_secure_protocol_message(step: int, mitm_active: bool, params: dict = Non
         )
     
     elif step == 5:
-        SB = xorInt(alice.get('nonce', 0), bob.get('nonce', 0))  # Igual a SA
-        KAB = modExp(g, alice.get('secret', 0) * bob.get('secret', 0), p) if p > 0 else 0
+        SB = xorInt(alice.get('NA', 0), bob.get('NB', 0))  # Igual a SA
+        KAB = modExp(g, alice.get('a', 0) * bob.get('b', 0), p) if p > 0 else 0
         return ProtocolMessage(
             "📤 Bob -> Alice [M5]: AuthB = MAC(KBA, SB || TS || LT)",
             "info", "bob", "alice",
@@ -414,76 +411,86 @@ def get_insecure_protocol_message(step: int, mitm_active: bool, params: dict = N
     hugo = params.get('hugo', {})
     g = params.get('g', 0)
     p = params.get('p', 0)
-    
-    ga = modExp(g, alice.get('secret', 0), p) if p > 0 else 0
-    gb = modExp(g, bob.get('secret', 0), p) if p > 0 else 0
-    ge = modExp(g, hugo.get('secret', 0), p) if p > 0 else 0
-    
-    # Claves calculadas por Hugo
-    KAE = modExp(ga, hugo.get('secret', 0), p) if p > 0 and ga > 0 else 0
-    KBE = modExp(gb, hugo.get('secret', 0), p) if p > 0 and gb > 0 else 0
-    
+
+    ga = modExp(g, alice.get('a', 0), p) if p > 0 else 0
+    gb = modExp(g, bob.get('b', 0), p) if p > 0 else 0
+    ge = modExp(g, hugo.get('e', 0), p) if p > 0 else 0
+
+    KAE = modExp(ga, hugo.get('e', 0), p) if p > 0 and ga > 0 else 0
+    KBE = modExp(gb, hugo.get('e', 0), p) if p > 0 and gb > 0 else 0
+
+    commit_c = f"hash({alice.get('mac', 'IDA')}||{ga}||{alice.get('NA', 0)})"
+    decommit_d = f"open({commit_c}) => {alice.get('mac', 'IDA')}||{ga}||{alice.get('NA', 0)}"
+
     if step == 1:
-        # Alice envía su mensaje con su valor público y nonce
+        if mitm_active:
+            return ProtocolMessage(
+                "⚠️ HUGO intercepta M1 y suplanta ante Bob: mE = IDA || ge || NE (Hugo usa la MAC de Alice)",
+                "danger", "hugo", "bob",
+                {"mE": f"{alice.get('mac', 'IDA')} || {ge} || {hugo.get('NE', 0)}"}
+            )
+
         return ProtocolMessage(
-            "📤 Alice -> Bob [M1]: mA = IDA || ga || NA (En claro).",
+            "📤 Alice -> Bob [M1]: c (commit de mA)",
             "info", "alice", "bob",
-            {"mA": f"{alice.get('id', 'IDA')} || {ga} || {alice.get('nonce', 0)}"}
+            {"c": commit_c, "mA": f"{alice.get('mac', 'IDA')} || {ga} || {alice.get('NA', 0)}"}
         )
-    
+
     elif step == 2:
         if mitm_active:
-            # Hugo intercepta mA de Alice y suplanta ante Bob con mE
             return ProtocolMessage(
-                "⚠️ HUGO intercepta M1 y suplanta ante Bob: mE = IDA || ge || NE (Hugo usa IDA)",
-                "danger", "hugo", "bob",
-                {"mE": f"{alice.get('id', 'IDA')} || {ge} || {hugo.get('nonce', 0)}"}
+                "📤 Bob -> Hugo: mB = IDB || gb || NB (respuesta a la suplantación)",
+                "info", "bob", "hugo",
+                {"mB": f"{bob.get('mac', 'IDB')} || {gb} || {bob.get('NB', 0)}"}
             )
-        else:
-            # Sin MITM, Bob recibe normalmente de Alice
-            return ProtocolMessage(
-                "📤 Bob <- Alice [M2]: mB = IDB || gb || NB (respuesta normal).",
-                "info", "bob", "alice",
-                {"mB": f"{bob.get('id', 'IDB')} || {gb} || {bob.get('nonce', 0)}"}
-            )
-    
+
+        return ProtocolMessage(
+            "📤 Bob -> Alice [M2]: mB = IDA || IDB || gb || NB",
+            "info", "bob", "alice",
+            {"mB": f"{alice.get('mac', 'IDA')} || {bob.get('mac', 'IDB')} || {gb} || {bob.get('NB', 0)}"}
+        )
+
     elif step == 3:
         if mitm_active:
-            # Bob responde (recibió el mensaje falso de Hugo)
             return ProtocolMessage(
-                "📤 Bob -> Hugo: mB = IDB || gb || NB (Bob responde al falso M1 de Hugo)",
-                "info", "bob", "hugo",
-                {"mB": f"{bob.get('id', 'IDB')} || {gb} || {bob.get('nonce', 0)}"}
-            )
-        else:
-            # Sin MITM, intercambio normal
-            SA = xorInt(alice.get('nonce', 0), bob.get('nonce', 0))
-            KAB = modExp(g, alice.get('secret', 0) * bob.get('secret', 0), p) if p > 0 else 0
-            return ProtocolMessage(
-                "✅ Protocolo completado: SA = NA ⊕ NB, KAB = g^(ab) mod p",
-                "success", "alice", "bob",
-                {"SA": SA, "KAB": KAB}
-            )
-    
-    elif step == 4:
-        if mitm_active:
-            # Hugo intercepta mB de Bob y suplanta ante Alice
-            return ProtocolMessage(
-                "⚠️ HUGO intercepta M2 y suplanta ante Alice: mE = IDB || ge || NE (Hugo usa IDB)",
+                "⚠️ HUGO intercepta M2 y suplanta ante Alice: mE = IDB || ge || NE (Hugo usa la MAC de Bob)",
                 "danger", "hugo", "alice",
                 {
-                    "mE_to_Alice": f"{bob.get('id', 'IDB')} || {ge} || {hugo.get('nonce', 0)}",
+                    "mE_to_Alice": f"{bob.get('mac', 'IDB')} || {ge} || {hugo.get('NE', 0)}",
                     "KAE": KAE,
                     "KBE": KBE
                 }
             )
-        else:
-            # Sin MITM, nunca alcanza paso 4
+
+        return ProtocolMessage(
+            "📤 Alice -> Bob [M3]: d (valor de apertura para c)",
+            "info", "alice", "bob",
+            {"d": decommit_d, "c": commit_c}
+        )
+
+    elif step == 4:
+        if mitm_active:
+            SB = xorInt(hugo.get('NE', 0), bob.get('NB', 0))
+            SA = xorInt(alice.get('NA', 0), hugo.get('NE', 0))
             return ProtocolMessage(
-                "❌ Paso 4 no alcanzado (protocolo completado en paso 3)",
-                "error"
+                "⚠️ HUGO completa el MITM: calcula KAE y KBE",
+                "danger", "hugo", "alice",
+                {
+                    "KAE": KAE,
+                    "KBE": KBE,
+                    "SAE": SA,
+                    "SBE": SB
+                }
             )
-    
+
+        SA = xorInt(alice.get('NA', 0), bob.get('NB', 0))
+        SB = xorInt(alice.get('NA', 0), bob.get('NB', 0))
+        return ProtocolMessage(
+            "✅ Autenticación mutua completada (inseguro): SA = SB = NA ⊕ NB",
+            "success", "alice", "bob",
+            {"SA": SA, "SB": SB}
+        )
+
     return ProtocolMessage("Paso inválido", "error")
 
 # ==========================================
@@ -583,100 +590,29 @@ def get_mitm_params():
 def update_mitm_params(req: MitmParamsRequest):
     """
     Actualiza los parámetros MITM globales.
-    Se usa cuando el usuario modifica g, p, IDs, secrets o nonces.
+    Se usa cuando el usuario modifica g, p, MACs, exponentes (a/b/e) o nonces.
     """
     global mitm_params
     mitm_params = {
         "g": req.g,
         "p": req.p,
         "alice": {
-            "id": req.alice.get("id", "IDA"),
-            "secret": req.alice.get("secret", 1),
-            "nonce": req.alice.get("nonce", 1000),
-            "public": modExp(req.g, req.alice.get("secret", 1), req.p)
+            "mac": req.alice.get("mac", "AA:BB:CC:DD:EE:01"),
+            "a": req.alice.get("a", 1),
+            "NA": req.alice.get("NA", 1000),
+            "public": modExp(req.g, req.alice.get("a", 1), req.p)
         },
         "bob": {
-            "id": req.bob.get("id", "IDB"),
-            "secret": req.bob.get("secret", 2),
-            "nonce": req.bob.get("nonce", 2000),
-            "public": modExp(req.g, req.bob.get("secret", 2), req.p)
+            "mac": req.bob.get("mac", "AA:BB:CC:DD:EE:02"),
+            "b": req.bob.get("b", 2),
+            "NB": req.bob.get("NB", 2000),
+            "public": modExp(req.g, req.bob.get("b", 2), req.p)
         },
         "hugo": {
-            "id": req.hugo.get("id", "IDE"),
-            "secret": req.hugo.get("secret", 3),
-            "nonce": req.hugo.get("nonce", 3000),
-            "public": modExp(req.g, req.hugo.get("secret", 3), req.p)
+            "mac": req.hugo.get("mac", "AA:BB:CC:DD:EE:03"),
+            "e": req.hugo.get("e", 3),
+            "NE": req.hugo.get("NE", 3000),
+            "public": modExp(req.g, req.hugo.get("e", 3), req.p)
         }
     }
     return mitm_params
-
-@app.post("/mitm_calculate_hugo")
-def calculate_hugo_values(req: MitmCalculateRequest):
-    """
-    Calcula los valores de Hugo basados en lo que "escucha" del protocolo.
-    
-    Hugo obtiene:
-    - ga = g^a mod p (del mensaje de Alice en M1)
-    - gb = g^b mod p (del mensaje de Bob en M2)
-    
-    Hugo genera su propio secreto e y calcula:
-    - KAE = ga^e mod p = g^(a*e) mod p (clave compartida con Alice)
-    - KBE = gb^e mod p = g^(b*e) mod p (clave compartida con Bob)
-    
-    Esto permite que Hugo suplante tanto a Alice como a Bob de forma simultánea.
-    """
-    global mitm_params
-    
-    g = req.g
-    p = req.p
-    
-    # Hugo obtiene los valores públicos que "escucha"
-    alice_secret = req.alice.get("secret", 1)
-    bob_secret = req.bob.get("secret", 2)
-    
-    # Calcular ga y gb (valores públicos de Alice y Bob)
-    ga = modExp(g, alice_secret, p)
-    gb = modExp(g, bob_secret, p)
-    
-    # Hugo genera su propio secreto y nonce
-    hugo_secret = random.randint(2, p - 2)
-    hugo_nonce = random.randint(1000, 9999)
-    hugo_public = modExp(g, hugo_secret, p)
-    
-    # Hugo calcula las claves compartidas:
-    # KAE = ga^e mod p (clave con Alice, basada en ga que escucha)
-    # KBE = gb^e mod p (clave con Bob, basada en gb que escucha)
-    KAE = modExp(ga, hugo_secret, p)  # Elevar ga a la potencia de secreto_hugo
-    KBE = modExp(gb, hugo_secret, p)  # Elevar gb a la potencia de secreto_hugo
-    
-    # Actualizar parámetros MITM globales
-    mitm_params["hugo"] = {
-        "id": "IDE",
-        "secret": hugo_secret,
-        "nonce": hugo_nonce,
-        "public": hugo_public
-    }
-    mitm_params["g"] = g
-    mitm_params["p"] = p
-    mitm_params["alice"] = {
-        "id": req.alice.get("id", "IDA"),
-        "secret": alice_secret,
-        "nonce": req.alice.get("nonce", 1000),
-        "public": ga
-    }
-    mitm_params["bob"] = {
-        "id": req.bob.get("id", "IDB"),
-        "secret": bob_secret,
-        "nonce": req.bob.get("nonce", 2000),
-        "public": gb
-    }
-    
-    return {
-        "hugo": mitm_params["hugo"],
-        "ga": ga,
-        "gb": gb,
-        "ge": hugo_public,
-        "KAE": KAE,
-        "KBE": KBE,
-        "explanation": f"Hugo escucha ga={ga}, gb={gb}. Calcula ge={hugo_public}. Luego: KAE=ga^e={KAE}, KBE=gb^e={KBE}"
-    }

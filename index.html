@@ -167,34 +167,34 @@
       const p = DEFAULT_PRIME_P;
       const g = DEFAULT_BASE_G;
 
-      const aliceSecret = randInt(2, p - 2);
-      const bobSecret = randInt(2, p - 2);
-      const hugoSecret = randInt(2, p - 2);
+      const aliceA = randInt(2, p - 2);
+      const bobB = randInt(2, p - 2);
+      const hugoE = randInt(2, p - 2);
 
-      const aliceNonce = randInt(1000, 9999);
-      const bobNonce = randInt(1000, 9999);
-      const hugoNonce = randInt(1000, 9999);
+      const aliceNA = randInt(1000, 9999);
+      const bobNB = randInt(1000, 9999);
+      const hugoNE = randInt(1000, 9999);
 
       return {
         g,
         p,
         alice: {
-          id: 'IDA',
-          secret: aliceSecret,
-          nonce: aliceNonce,
-          public: modExp(g, aliceSecret, p),
+          mac: 'AA:BB:CC:DD:EE:01',
+          a: aliceA,
+          NA: aliceNA,
+          public: modExp(g, aliceA, p),
         },
         bob: {
-          id: 'IDB',
-          secret: bobSecret,
-          nonce: bobNonce,
-          public: modExp(g, bobSecret, p),
+          mac: 'AA:BB:CC:DD:EE:02',
+          b: bobB,
+          NB: bobNB,
+          public: modExp(g, bobB, p),
         },
         hugo: {
-          id: 'IDE',
-          secret: hugoSecret,
-          nonce: hugoNonce,
-          public: modExp(g, hugoSecret, p),
+          mac: 'AA:BB:CC:DD:EE:03',
+          e: hugoE,
+          NE: hugoNE,
+          public: modExp(g, hugoE, p),
         },
       };
     }
@@ -206,42 +206,42 @@
       const isSecure = mode.includes('secure');
       const { alice, bob, hugo, g, p } = params;
 
-      const ga = modExp(g, alice.secret, p);
-      const gb = modExp(g, bob.secret, p);
-      const ge = modExp(g, hugo.secret, p);
+      const ga = modExp(g, alice.a, p);
+      const gb = modExp(g, bob.b, p);
+      const ge = modExp(g, hugo.e, p);
 
       if (!mode.includes('mitm')) return data.msg;
 
       // Insecure protocol steps
       if (!isSecure) {
         if (step === 1) {
-          const mA = `${alice.id} || ${ga} || ${alice.nonce}`;
+          const mA = `${alice.mac} || ${ga} || ${alice.NA}`;
           return `${data.msg} mA = ${mA}`;
         }
         if (step === 2) {
           if (mitmActive) {
-            const mE = `${alice.id} || ${ge} || ${hugo.nonce}`;
+            const mE = `${alice.mac} || ${ge} || ${hugo.NE}`;
             return `${data.msg} mE = ${mE}`;
           }
-          const mB = `${bob.id} || ${gb} || ${bob.nonce}`;
+          const mB = `${bob.mac} || ${gb} || ${bob.NB}`;
           return `${data.msg} mB = ${mB}`;
         }
         if (step === 3) {
           if (mitmActive) {
-            const SB = xorInt(hugo.nonce, bob.nonce);
+            const SB = xorInt(hugo.NE, bob.NB);
             return `${data.msg} SB = ${SB} (NE ⊕ NB)`;
           }
-          const SA = xorInt(alice.nonce, bob.nonce);
+          const SA = xorInt(alice.NA, bob.NB);
           const SB = SA;
           return `${data.msg} SA = ${SA} · SB = ${SB}`;
         }
         if (step === 4) {
           if (mitmActive) {
-            const KAE = modExp(g, alice.secret * hugo.secret, p);
-            const KBE = modExp(g, bob.secret * hugo.secret, p);
+            const KAE = modExp(g, alice.a * hugo.e, p);
+            const KBE = modExp(g, bob.b * hugo.e, p);
             return `${data.msg} KAE = ${KAE} · KBE = ${KBE}`;
           }
-          const KAB = modExp(g, alice.secret * bob.secret, p);
+          const KAB = modExp(g, alice.a * bob.b, p);
           return `${data.msg} KAB = ${KAB}`;
         }
         return data.msg;
@@ -249,11 +249,11 @@
 
       // Secure mode: add helpful numeric hints where possible
       if (step === 1) {
-        const mA = `${alice.id} || ${ga} || ${alice.nonce}`;
+        const mA = `${alice.mac} || ${ga} || ${alice.NA}`;
         return `${data.msg} mA = ${mA}`;
       }
       if (step === 2) {
-        const mB = `${bob.id} || ${gb} || ${bob.nonce}`;
+        const mB = `${bob.mac} || ${gb} || ${bob.NB}`;
         return `${data.msg} mB = ${mB}`;
       }
       if (step === 3) {
@@ -266,10 +266,71 @@
         return `${data.msg}`;
       }
       if (step === 6) {
-        const KAB = modExp(g, alice.secret * bob.secret, p);
+        const KAB = modExp(g, alice.a * bob.b, p);
         return `${data.msg} KAB = ${KAB}`;
       }
       return data.msg;
+    }
+
+    // ==========================================
+    // FUNCIONES MATEMÁTICAS Y VALIDACIÓN DH
+    // ==========================================
+
+    /**
+     * Verifica si un número es primo (prueba simple para números pequeños)
+     */
+    function isPrime(n) {
+      if (n <= 1) return false;
+      if (n <= 3) return true;
+      if (n % 2 === 0 || n % 3 === 0) return false;
+      for (let i = 5; i * i <= n; i += 6) {
+        if (n % i === 0 || n % (i + 2) === 0) return false;
+      }
+      return true;
+    }
+
+    /**
+     * Obtiene los factores primos de n-1 para verificar raíces primitivas
+     */
+    function getPrimeFactors(n) {
+      const factors = [];
+      let d = 2;
+      while (d * d <= n) {
+        while (n % d === 0) {
+          if (!factors.includes(d)) factors.push(d);
+          n /= d;
+        }
+        d++;
+      }
+      if (n > 1) factors.push(n);
+      return factors;
+    }
+
+    /**
+     * Verifica si g es una raíz primitiva de p (generador del grupo multiplicativo mod p)
+     */
+    function isPrimitiveRoot(g, p) {
+      if (g <= 0 || g >= p) return false;
+      const factors = getPrimeFactors(p - 1);
+      for (let factor of factors) {
+        if (modExp(g, (p - 1) / factor, p) === 1) return false;
+      }
+      return true;
+    }
+
+    /**
+     * Valida parámetros Diffie-Hellman y retorna { valid: bool, reason?: string }
+     */
+    function validateDiffieHellmanParams(g, p) {
+      // Verificar p
+      if (p <= 2) return { valid: false, reason: 'p debe ser mayor que 2' };
+      if (!isPrime(p)) return { valid: false, reason: `p = ${p} no es un número primo` };
+      
+      // Verificar g
+      if (g <= 1 || g >= p) return { valid: false, reason: `g debe estar entre 2 y ${p - 1}` };
+      if (!isPrimitiveRoot(g, p)) return { valid: false, reason: `g = ${g} no es una raíz primitiva de p = ${p}` };
+      
+      return { valid: true };
     }
 
     // ==========================================
@@ -563,7 +624,6 @@
       mitmActive, 
       onMitmToggle,
       onProtocolStep,
-      onCalculateHugo,
       params,
       onParamChange,
       disabled
@@ -601,16 +661,6 @@
               : '⬇ SIGUIENTE PASO'
             }
           </button>
-
-          {/* Botón para calcular valores de Hugo */}
-          {mitmActive && protocolStep === 0 && (
-            <button 
-              onClick={onCalculateHugo}
-              className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded shadow-md active:scale-95 transition-transform"
-            >
-              🎯 CALCULAR VALORES DE HUGO
-            </button>
-          )}
 
           {params && (
             <MitmValuesPanel 
@@ -651,7 +701,7 @@
         <label className="flex items-center gap-2 text-[11px] text-slate-200 font-mono">
           <span className="text-slate-400 text-[10px] uppercase">{label}</span>
           <input
-            type="number"
+            type={field === 'mac' ? 'text' : 'number'}
             value={value}
             onChange={(e) => onParamChange(actor, field, e.target.value)}
             disabled={disabled}
@@ -660,17 +710,31 @@
         </label>
       );
 
+      const validation = validateDiffieHellmanParams(params.g, params.p);
+
       return (
         <div className="space-y-3 text-xs">
-          <div className="bg-slate-900/70 border border-slate-700 rounded p-3 space-y-2">
+          <div className={`border rounded p-3 space-y-2 ${validation.valid ? 'bg-green-900/20 border-green-600' : 'bg-red-900/20 border-red-600'}`}>
             <div className="text-[11px] font-bold text-slate-200 flex items-center justify-between">
-              <span>Parámetros comunes</span>
-              <span className="text-[10px] text-slate-400">Editables hasta iniciar protocolo</span>
+              <span>Parámetros comunes (Diffie-Hellman)</span>
+              <span className={`text-[10px] font-bold ${validation.valid ? 'text-green-400' : 'text-red-400'}`}>
+                {validation.valid ? '✅ Válidos' : '❌ Inválidos'}
+              </span>
             </div>
             <div className="grid grid-cols-2 gap-2">
               {commonInput('g', params.g, 'g')}
               {commonInput('p', params.p, 'p')}
             </div>
+            {!validation.valid && (
+              <div className="text-[10px] text-red-300 mt-2 italic border-t border-red-600/50 pt-2">
+                ⚠️ {validation.reason}
+              </div>
+            )}
+            {validation.valid && (
+              <div className="text-[10px] text-green-300 mt-2 italic border-t border-green-600/50 pt-2">
+                ✓ p es primo y g es una raíz primitiva
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-2">
@@ -678,9 +742,9 @@
               <div key={card.key} className={`border ${card.color} rounded p-3 flex flex-col bg-slate-900/70 gap-2`}>
                 <div className="text-[11px] font-bold text-white">{card.title}</div>
                 <div className="grid grid-cols-1 gap-2">
-                  {actorInput(card.key, 'ID', card.data.id, 'id')}
-                  {actorInput(card.key, 'Secreto (exp)', card.data.secret, 'secret')}
-                  {actorInput(card.key, 'Nonce (N)', card.data.nonce, 'nonce')}
+                  {actorInput(card.key, 'MAC', card.data.mac, 'mac')}
+                  {actorInput(card.key, card.key === 'hugo' ? 'e' : card.key === 'bob' ? 'b' : 'a', card.data[card.key === 'hugo' ? 'e' : card.key === 'bob' ? 'b' : 'a'], card.key === 'hugo' ? 'e' : card.key === 'bob' ? 'b' : 'a')}
+                  {actorInput(card.key, card.key === 'hugo' ? 'NE' : card.key === 'bob' ? 'NB' : 'NA', card.data[card.key === 'hugo' ? 'NE' : card.key === 'bob' ? 'NB' : 'NA'], card.key === 'hugo' ? 'NE' : card.key === 'bob' ? 'NB' : 'NA')}
                   {actorInput(card.key, 'g^exp mod p', card.data.public, 'public')}
                 </div>
               </div>
@@ -849,6 +913,23 @@
           return;
         }
 
+        // Validar parámetros Diffie-Hellman en el primer paso del protocolo MITM
+        if (protocolStep === 0 && isMitmMode(mode)) {
+          const validation = validateDiffieHellmanParams(mitmParams.g, mitmParams.p);
+          if (!validation.valid) {
+            addLog(
+              `❌ PARÁMETROS DIFFIE-HELLMAN INVÁLIDOS: ${validation.reason}. Por favor, selecciona otros parámetros antes de iniciar.`,
+              LOG_TYPES.ERROR
+            );
+            return;
+          } else {
+            addLog(
+              `✅ Parámetros Diffie-Hellman válidos: p = ${mitmParams.p} (primo), g = ${mitmParams.g} (generador)`,
+              LOG_TYPES.SUCCESS
+            );
+          }
+        }
+
         try {
           const data = await getProtocolStep(nextStep, mode, mitmActive);
           
@@ -879,66 +960,13 @@
       };
 
       /**
-       * Calcula los valores de Hugo basado en Alice y Bob
-       */
-      const handleCalculateHugo = async () => {
-        try {
-          const response = await fetch(`${API_URL}/mitm_calculate_hugo`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              g: mitmParams.g,
-              p: mitmParams.p,
-              alice: {
-                id: mitmParams.alice.id,
-                secret: mitmParams.alice.secret,
-                nonce: mitmParams.alice.nonce
-              },
-              bob: {
-                id: mitmParams.bob.id,
-                secret: mitmParams.bob.secret,
-                nonce: mitmParams.bob.nonce
-              }
-            })
-          });
-          const result = await response.json();
-          
-          // Actualizar los parámetros locales con los valores calculados
-          setMitmParams(prev => ({
-            ...prev,
-            hugo: result.hugo
-          }));
-          
-          // Log detallado del cálculo de Hugo
-          addLog(
-            `🎯 HUGO CALCULA: ga=${result.ga}, gb=${result.gb} (escuchados)`, 
-            LOG_TYPES.INFO
-          );
-          addLog(
-            `🎯 HUGO GENERA: ge=${result.ge}, NE=${result.hugo.nonce} (aleatorios)`, 
-            LOG_TYPES.INFO
-          );
-          addLog(
-            `🎯 HUGO COMPUTA: KAE = ga^e mod p = ${result.KAE}, KBE = gb^e mod p = ${result.KBE}`, 
-            LOG_TYPES.SUCCESS
-          );
-          addLog(
-            `${result.explanation}`, 
-            LOG_TYPES.SUCCESS
-          );
-        } catch (e) {
-          addLog(`Error calculando valores de Hugo: ${e.message}`, LOG_TYPES.DANGER);
-        }
-      };
-
-      /**
-       * Maneja cambios manuales en parámetros MITM (g, p, IDs, secretos, nonces)
+       * Maneja cambios manuales en parámetros MITM (g, p, MACs, exponentes, nonces)
        * Recalcula g^secret mod p cuando corresponda y sincroniza con el backend.
        */
       const handleMitmParamChange = (scope, field, rawValue) => {
         setMitmParams(prev => {
           let value = rawValue;
-          const isNumberField = ['g', 'p', 'secret', 'nonce', 'public'].includes(field);
+          const isNumberField = ['g', 'p', 'a', 'b', 'e', 'NA', 'NB', 'NE', 'public'].includes(field);
           if (isNumberField) {
             value = parseInt(rawValue || '0', 10);
             if (Number.isNaN(value)) value = 0;
@@ -950,13 +978,14 @@
             next[field] = value;
             // Recalcular públicos con nuevos g/p
             ['alice', 'bob', 'hugo'].forEach(actor => {
-              next[actor].public = modExp(next.g, next[actor].secret, next.p || 1);
+              const expField = actor === 'alice' ? 'a' : actor === 'bob' ? 'b' : 'e';
+              next[actor].public = modExp(next.g, next[actor][expField], next.p || 1);
             });
           } else {
             // Actor
             next[scope][field] = value;
-            if (field === 'secret') {
-              next[scope].public = modExp(next.g, next[scope].secret, next.p || 1);
+            if (['a', 'b', 'e'].includes(field)) {
+              next[scope].public = modExp(next.g, next[scope][field], next.p || 1);
             }
           }
 
@@ -1022,7 +1051,6 @@
                   mitmActive={mitmActive}
                   onMitmToggle={setMitmActive}
                   onProtocolStep={handleProtocolStep}
-                  onCalculateHugo={handleCalculateHugo}
                   params={mitmParams}
                   onParamChange={handleMitmParamChange}
                   disabled={protocolStep > 0}
