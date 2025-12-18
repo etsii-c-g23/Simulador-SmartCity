@@ -66,150 +66,722 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
     
+    // ==========================================
+    // CONFIGURACIÓN GLOBAL
+    // ==========================================
+    
     const API_URL = "";
 
-    // CAMBIO: Alice = Semáforo (izquierda), Bob = Cámara (derecha)
+    // Posiciones de actores en el canvas (porcentajes del viewBox 0 0 100 100)
+    // 📏 ESPACIADO: Cambia los valores x/y para mover los actores
+    // - alice.x: posición horizontal izquierda (menor = más a la izquierda)
+    // - bob.x: posición horizontal derecha (mayor = más a la derecha)
+    // - hugo.y: posición vertical (menor = más arriba, más cerca de la línea)
     const POSITIONS = {
-      alice: { x: 150, y: 150 },  // Semáforo (izquierda)
-      bob: { x: 800, y: 150 },    // Cámara (derecha)
-      eve: { x: 475, y: 300 }
+      alice: { x: -15, y: 30 },  // Semáforo (dispositivo legítimo) - izquierda
+      bob: { x: 105, y: 30 },    // Cámara (servidor IoT) - derecha
+      hugo: { x: 45, y: 71 }     // Atacante - centro
     };
-    const COLORS = { safe: '#10B981', danger: '#EF4444', neutral: '#3B82F6', yellow: '#F59E0B' };
+
+    // Colores para los actores y estados
+    const COLORS = {
+      safe: '#10B981',
+      danger: '#EF4444',
+      neutral: '#3B82F6',
+      yellow: '#F59E0B'
+    };
+
+    // Modos de operación
+    const MODES = {
+      DOS_INSECURE: 'dos_insecure',
+      DOS_SECURE: 'dos_secure',
+      MITM_INSECURE: 'mitm_insecure',
+      MITM_SECURE: 'mitm_secure'
+    };
+
+    // Pasos máximos del protocolo por modo
+    const PROTOCOL_STEPS = {
+      secure: 6,
+      insecure: 4
+    };
+
+    // Estados de los actores
+    const ACTOR_NAMES = {
+      alice: 'ALICE',
+      bob: 'BOB',
+      hugo: 'HUGO'
+    };
+
+    const ACTOR_ROLES = {
+      alice: 'Semáforo 5G',
+      bob: 'Cámara IoT',
+      hugo: 'Atacante'
+    };
+
+    // Estados de la cámara
+    const CAMERA_STATUS_OK = 'OK';
+    const CAMERA_STATUS_DOWN = 'DOWN';
+
+    // Estados de dispositivos
+    const DEVICE_STATUS_CONNECTED = 'connected';
+    const DEVICE_STATUS_DISCONNECTED = 'disconnected';
+
+    // Mensajes de logs
+    const LOG_TYPES = {
+      INFO: 'info',
+      SUCCESS: 'success',
+      DANGER: 'danger',
+      ERROR: 'error',
+      NEUTRAL: 'neutral'
+    };
+
+    // Parámetros por defecto para el cálculo MITM
+    const DEFAULT_PRIME_P = 23;
+    const DEFAULT_BASE_G = 5;
+
+    function xorInt(a, b) {
+      return (a ^ b) >>> 0;
+    }
+
+    // ==========================================
+    // FUNCIONES MATEMÁTICAS (MITM)
+    // ==========================================
+
+    function modExp(base, exp, mod) {
+      let result = 1;
+      let b = base % mod;
+      let e = exp;
+      while (e > 0) {
+        if (e & 1) result = (result * b) % mod;
+        b = (b * b) % mod;
+        e >>= 1;
+      }
+      return result;
+    }
+
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function generateMitmParams() {
+      const p = DEFAULT_PRIME_P;
+      const g = DEFAULT_BASE_G;
+
+      const aliceSecret = randInt(2, p - 2);
+      const bobSecret = randInt(2, p - 2);
+      const hugoSecret = randInt(2, p - 2);
+
+      const aliceNonce = randInt(1000, 9999);
+      const bobNonce = randInt(1000, 9999);
+      const hugoNonce = randInt(1000, 9999);
+
+      return {
+        g,
+        p,
+        alice: {
+          id: 'IDA',
+          secret: aliceSecret,
+          nonce: aliceNonce,
+          public: modExp(g, aliceSecret, p),
+        },
+        bob: {
+          id: 'IDB',
+          secret: bobSecret,
+          nonce: bobNonce,
+          public: modExp(g, bobSecret, p),
+        },
+        hugo: {
+          id: 'IDE',
+          secret: hugoSecret,
+          nonce: hugoNonce,
+          public: modExp(g, hugoSecret, p),
+        },
+      };
+    }
+
+    /**
+     * Enriquecer mensaje MITM con valores reales según paso y modo
+     */
+    function formatMitmMessage(step, data, params, mitmActive, mode) {
+      const isSecure = mode.includes('secure');
+      const { alice, bob, hugo, g, p } = params;
+
+      const ga = modExp(g, alice.secret, p);
+      const gb = modExp(g, bob.secret, p);
+      const ge = modExp(g, hugo.secret, p);
+
+      if (!mode.includes('mitm')) return data.msg;
+
+      // Insecure protocol steps
+      if (!isSecure) {
+        if (step === 1) {
+          const mA = `${alice.id} || ${ga} || ${alice.nonce}`;
+          return `${data.msg} mA = ${mA}`;
+        }
+        if (step === 2) {
+          if (mitmActive) {
+            const mE = `${alice.id} || ${ge} || ${hugo.nonce}`;
+            return `${data.msg} mE = ${mE}`;
+          }
+          const mB = `${bob.id} || ${gb} || ${bob.nonce}`;
+          return `${data.msg} mB = ${mB}`;
+        }
+        if (step === 3) {
+          if (mitmActive) {
+            const SB = xorInt(hugo.nonce, bob.nonce);
+            return `${data.msg} SB = ${SB} (NE ⊕ NB)`;
+          }
+          const SA = xorInt(alice.nonce, bob.nonce);
+          const SB = SA;
+          return `${data.msg} SA = ${SA} · SB = ${SB}`;
+        }
+        if (step === 4) {
+          if (mitmActive) {
+            const KAE = modExp(g, alice.secret * hugo.secret, p);
+            const KBE = modExp(g, bob.secret * hugo.secret, p);
+            return `${data.msg} KAE = ${KAE} · KBE = ${KBE}`;
+          }
+          const KAB = modExp(g, alice.secret * bob.secret, p);
+          return `${data.msg} KAB = ${KAB}`;
+        }
+        return data.msg;
+      }
+
+      // Secure mode: add helpful numeric hints where possible
+      if (step === 1) {
+        const mA = `${alice.id} || ${ga} || ${alice.nonce}`;
+        return `${data.msg} mA = ${mA}`;
+      }
+      if (step === 2) {
+        const mB = `${bob.id} || ${gb} || ${bob.nonce}`;
+        return `${data.msg} mB = ${mB}`;
+      }
+      if (step === 3) {
+        return `${data.msg} (ga=${ga}, gb=${gb})`;
+      }
+      if (step === 4) {
+        return `${data.msg}`;
+      }
+      if (step === 5) {
+        return `${data.msg}`;
+      }
+      if (step === 6) {
+        const KAB = modExp(g, alice.secret * bob.secret, p);
+        return `${data.msg} KAB = ${KAB}`;
+      }
+      return data.msg;
+    }
+
+    // ==========================================
+    // FUNCIONES AUXILIARES
+    // ==========================================
+
+    /**
+     * Determina si el modo actual es DoS
+     */
+    function isDoSMode(mode) {
+      return mode.includes('dos');
+    }
+
+    /**
+     * Determina si el modo actual es MITM
+     */
+    function isMitmMode(mode) {
+      return mode.includes('mitm');
+    }
+
+    /**
+     * Determina si el modo es seguro (protegido)
+     */
+    function isSecureMode(mode) {
+      return !mode.includes('insecure');
+    }
+
+    /**
+     * Obtiene el número máximo de pasos para un modo
+     */
+    function getMaxSteps(mode) {
+      return isSecureMode(mode) ? PROTOCOL_STEPS.secure : PROTOCOL_STEPS.insecure;
+    }
+
+    /**
+     * Determina si la cámara está caída
+     */
+    function isCameraDown(cameraState) {
+      return cameraState.status === CAMERA_STATUS_DOWN;
+    }
+
+    /**
+     * Crea un nuevo log con timestamp
+     */
+    function createLog(msg, type = LOG_TYPES.INFO) {
+      const time = new Date().toLocaleTimeString().split(' ')[0];
+      return {
+        id: Date.now() + Math.random(),
+        time,
+        msg,
+        type
+      };
+    }
+
+    /**
+     * Obtiene las clases CSS para un tipo de log
+     */
+    function getLogTypeClasses(type) {
+      const baseClasses = 'border-l-4 pl-3 py-1';
+      
+      switch (type) {
+        case LOG_TYPES.DANGER:
+        case LOG_TYPES.ERROR:
+          return `${baseClasses} border-red-500 bg-red-900/20 text-red-300`;
+        case LOG_TYPES.SUCCESS:
+          return `${baseClasses} border-green-500 bg-green-900/20 text-green-300`;
+        default:
+          return `${baseClasses} border-blue-500 text-blue-300`;
+      }
+    }
+
+    // ==========================================
+    // FUNCIONES DE API
+    // ==========================================
+
+    /**
+     * Obtiene el estado actual de la BD y cámara del backend
+     */
+    async function fetchDatabaseState() {
+      try {
+        const res = await fetch(`${API_URL}/db`);
+        return await res.json();
+      } catch (e) {
+        console.error("Error conectando a backend", e);
+        return null;
+      }
+    }
+
+    /**
+     * Reinicia el sistema en el backend
+     */
+    async function resetBackendSystem() {
+      try {
+        await fetch(`${API_URL}/reset`, { method: 'POST' });
+        return await fetchDatabaseState();
+      } catch (e) {
+        console.error("Error reiniciando backend", e);
+        return null;
+      }
+    }
+
+    /**
+     * Envía un paquete DoS al backend
+     */
+    async function sendDoSPacket(mac, rssi, isSecure) {
+      try {
+        const res = await fetch(`${API_URL}/check_dos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mac,
+            rssi: parseInt(rssi),
+            is_secure_mode: isSecure
+          })
+        });
+        return await res.json();
+      } catch (e) {
+        throw new Error("Error de conexión con Backend");
+      }
+    }
+
+    /**
+     * Obtiene el siguiente paso del protocolo del backend
+     */
+    async function getProtocolStep(step, mode, mitmActive) {
+      try {
+        const res = await fetch(`${API_URL}/protocol_step`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            step,
+            mode,
+            mitm_active: mitmActive
+          })
+        });
+        return await res.json();
+      } catch (e) {
+        throw new Error("Error Backend: " + e);
+      }
+    }
+
+    // ==========================================
+    // COMPONENTES REACT
+    // ==========================================
+
+    /**
+     * Componente para mostrar un log individual
+     */
+    function LogEntry({ log }) {
+      return (
+        <div className={getLogTypeClasses(log.type)}>
+          <span className="text-slate-500 mr-3">[{log.time}]</span>
+          <span className="font-semibold">{log.msg}</span>
+        </div>
+      );
+    }
+
+    /**
+     * Componente para la sección de logs
+     */
+    function LogsPanel({ logs, onClearLogs, logEndRef }) {
+      return (
+        <div className="h-64 bg-black border-t-4 border-slate-700 flex-none flex flex-col shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-20">
+          <div className="bg-slate-800 px-4 py-2 flex justify-between items-center border-b border-slate-700">
+            <span className="text-xs font-bold text-green-400 flex items-center gap-2 uppercase tracking-wider">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> System Security Logs
+            </span>
+            <button 
+              onClick={onClearLogs} 
+              className="text-[10px] text-slate-400 hover:text-white uppercase border border-slate-600 px-2 py-0.5 rounded transition-colors hover:bg-slate-700"
+            >
+              Limpiar Consola
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4 font-mono text-xs space-y-2 scroll-smooth bg-black/50">
+            {logs.length === 0 && <p className="text-slate-600 italic text-center mt-10">Esperando eventos de red...</p>}
+            {logs.map(l => <LogEntry key={l.id} log={l} />)}
+            <div ref={logEndRef} />
+          </div>
+        </div>
+      );
+    }
+
+    /**
+     * Componente para mostrar estado de dispositivos en la BD
+     */
+    function ServerDBDisplay({ serverDB }) {
+      return (
+        <div className="mt-4 border-t border-slate-600 pt-4">
+          <h4 className="text-[10px] font-bold text-slate-500 mb-2 uppercase">Estado Servidor (Backend)</h4>
+          <div className="space-y-1.5">
+            {Object.entries(serverDB).map(([mac, val]) => (
+              <div key={mac} className="flex justify-between items-center text-[10px] bg-slate-900 p-2 rounded border border-slate-700">
+                <span className="font-mono text-slate-300">{mac.slice(0, 11)}...</span>
+                <span className={`px-1.5 py-0.5 rounded font-bold ${val.status === DEVICE_STATUS_CONNECTED ? 'bg-green-900 text-green-300' : 'bg-slate-700 text-slate-500'}`}>
+                  {val.status === DEVICE_STATUS_CONNECTED ? 'ONLINE' : 'OFF'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    /**
+     * Componente para la sección DoS
+     */
+    function DoSPanel({ 
+      dosMac, onMacChange, 
+      dosRssi, onRssiChange, 
+      sender, onSenderChange,
+      onSendPacket,
+      isCameraDown,
+      serverDB 
+    }) {
+      return (
+        <div className="space-y-4 animate-[fadeIn_0.5s]">
+          {/* Selector de quién envía */}
+          <div className="bg-slate-700/50 p-3 rounded border border-slate-600">
+            <label className="text-xs font-bold text-slate-400 block mb-2">QUIÉN ENVÍA:</label>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => onSenderChange('alice')}
+                className={`flex-1 py-2 rounded text-xs font-bold border transition-all ${
+                  sender === 'alice' 
+                    ? 'bg-green-900/50 border-green-500 text-green-300' 
+                    : 'border-slate-600 text-slate-400 hover:bg-slate-700'
+                }`}
+              >
+                SEMÁFORO
+              </button>
+              <button 
+                onClick={() => onSenderChange('hugo')}
+                className={`flex-1 py-2 rounded text-xs font-bold border transition-all ${
+                  sender === 'hugo' 
+                    ? 'bg-red-900/50 border-red-500 text-red-300' 
+                    : 'border-slate-600 text-slate-400 hover:bg-slate-700'
+                }`}
+              >
+                HACKER
+              </button>
+            </div>
+          </div>
+
+          {/* Entrada de MAC */}
+          <div>
+            <label className="text-xs font-bold text-slate-400">MAC ADDRESS</label>
+            <input 
+              type="text" 
+              value={dosMac} 
+              onChange={(e) => onMacChange(e.target.value)} 
+              className="w-full bg-slate-900 border border-slate-600 rounded p-2 font-mono text-sm text-yellow-400 outline-none focus:border-yellow-500" 
+            />
+          </div>
+
+          {/* Slider de RSSI */}
+          <div>
+            <label className="text-xs font-bold text-slate-400 flex justify-between">
+              <span>RSSI ({dosRssi} dBm)</span>
+            </label>
+            <input 
+              type="range" 
+              min="-90" 
+              max="-10" 
+              value={dosRssi} 
+              onChange={(e) => onRssiChange(e.target.value)} 
+              className="w-full accent-blue-500 h-2 bg-slate-700 rounded appearance-none" 
+            />
+          </div>
+
+          {/* Botón enviar paquete */}
+          <button 
+            onClick={onSendPacket} 
+            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded shadow-md active:scale-95 transition-transform disabled:bg-slate-500 disabled:cursor-not-allowed" 
+            disabled={isCameraDown}
+          >
+            {isCameraDown ? 'SISTEMA CAÍDO (CPU 0)' : 'ENVIAR PAQUETE'}
+          </button>
+
+          <ServerDBDisplay serverDB={serverDB} />
+        </div>
+      );
+    }
+
+    /**
+     * Componente para la sección MITM
+     */
+    function MitmPanel({ 
+      protocolStep, 
+      mode, 
+      mitmActive, 
+      onMitmToggle,
+      onProtocolStep,
+      onCalculateHugo,
+      params,
+      onParamChange,
+      disabled
+    }) {
+      const maxSteps = getMaxSteps(mode);
+      
+      return (
+        <div className="space-y-5 animate-[fadeIn_0.5s]">
+          {/* Toggle de ataque activo */}
+          <div 
+            className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 flex justify-between items-center cursor-pointer group" 
+            onClick={() => onMitmToggle(!mitmActive)}
+          >
+            <span className="text-xs font-bold text-red-400 group-hover:text-red-300 transition-colors">ATAQUE ACTIVO</span>
+            <div className={`w-10 h-5 rounded-full relative transition-colors ${mitmActive ? 'bg-red-500' : 'bg-slate-600'}`}>
+              <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${mitmActive ? 'translate-x-5' : ''}`}></div>
+            </div>
+          </div>
+
+          {/* Mostrador de paso */}
+          <div className="text-center p-4 bg-slate-900 rounded border border-slate-700">
+            <div className="text-4xl font-bold text-white mb-1">{protocolStep} / {maxSteps}</div>
+            <div className="text-xs text-purple-300 font-bold uppercase tracking-wider">Paso del Protocolo</div>
+          </div>
+
+          {/* Botón siguiente paso */}
+          <button 
+            onClick={onProtocolStep} 
+            className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded shadow-md active:scale-95 transition-transform"
+          >
+            {protocolStep === 0 
+              ? '▶ INICIAR PROTOCOLO' 
+              : protocolStep >= maxSteps 
+              ? '↺ REINICIAR' 
+              : '⬇ SIGUIENTE PASO'
+            }
+          </button>
+
+          {/* Botón para calcular valores de Hugo */}
+          {mitmActive && protocolStep === 0 && (
+            <button 
+              onClick={onCalculateHugo}
+              className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded shadow-md active:scale-95 transition-transform"
+            >
+              🎯 CALCULAR VALORES DE HUGO
+            </button>
+          )}
+
+          {params && (
+            <MitmValuesPanel 
+              params={params} 
+              mitmActive={mitmActive}
+              disabled={disabled}
+              onParamChange={onParamChange}
+            />
+          )}
+        </div>
+      );
+    }
+
+    /**
+     * Panel que muestra los valores numéricos de MITM para cada actor
+     */
+    function MitmValuesPanel({ params, mitmActive, disabled, onParamChange }) {
+      const cards = [
+        { key: 'alice', title: 'Alice (Dispositivo legítimo)', color: 'border-green-500', data: params.alice },
+        { key: 'bob',   title: 'Bob (Servidor IoT)',       color: 'border-blue-500',  data: params.bob },
+        { key: 'hugo',  title: 'Hugo (Atacante)',          color: mitmActive ? 'border-red-500 bg-red-900/10' : 'border-slate-600 bg-slate-800/40', data: params.hugo },
+      ];
+
+      const commonInput = (label, value, field) => (
+        <label className="flex items-center gap-2 text-[11px] text-slate-200 font-mono">
+          <span className="text-slate-400 text-[10px] uppercase">{label}</span>
+          <input
+            type="number"
+            value={value}
+            onChange={(e) => onParamChange('common', field, e.target.value)}
+            disabled={disabled}
+            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100 text-xs focus:border-blue-500 outline-none disabled:opacity-60"
+          />
+        </label>
+      );
+
+      const actorInput = (actor, label, value, field) => (
+        <label className="flex items-center gap-2 text-[11px] text-slate-200 font-mono">
+          <span className="text-slate-400 text-[10px] uppercase">{label}</span>
+          <input
+            type="number"
+            value={value}
+            onChange={(e) => onParamChange(actor, field, e.target.value)}
+            disabled={disabled}
+            className="w-full bg-slate-900 border border-slate-700 rounded px-2 py-1 text-slate-100 text-xs focus:border-blue-500 outline-none disabled:opacity-60"
+          />
+        </label>
+      );
+
+      return (
+        <div className="space-y-3 text-xs">
+          <div className="bg-slate-900/70 border border-slate-700 rounded p-3 space-y-2">
+            <div className="text-[11px] font-bold text-slate-200 flex items-center justify-between">
+              <span>Parámetros comunes</span>
+              <span className="text-[10px] text-slate-400">Editables hasta iniciar protocolo</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {commonInput('g', params.g, 'g')}
+              {commonInput('p', params.p, 'p')}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2">
+            {cards.map(card => (
+              <div key={card.key} className={`border ${card.color} rounded p-3 flex flex-col bg-slate-900/70 gap-2`}>
+                <div className="text-[11px] font-bold text-white">{card.title}</div>
+                <div className="grid grid-cols-1 gap-2">
+                  {actorInput(card.key, 'ID', card.data.id, 'id')}
+                  {actorInput(card.key, 'Secreto (exp)', card.data.secret, 'secret')}
+                  {actorInput(card.key, 'Nonce (N)', card.data.nonce, 'nonce')}
+                  {actorInput(card.key, 'g^exp mod p', card.data.public, 'public')}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ==========================================
+    // APLICACIÓN PRINCIPAL
+    // ==========================================
 
     const App = () => {
-      // Valores iniciales por defecto (de Alice, el dispositivo legítimo)
-      const [mode, setMode] = useState('dos_insecure');
+      // Estados de la UI
+      const [mode, setMode] = useState(MODES.DOS_INSECURE);
       const [dosMac, setDosMac] = useState('11:22:33:44:55:66');
       const [dosRssi, setDosRssi] = useState(-45);
       const [sender, setSender] = useState('alice');
-
-      const [serverDB, setServerDB] = useState({});
       const [protocolStep, setProtocolStep] = useState(0);
       const [mitmActive, setMitmActive] = useState(false);
-      
-      const [cameraState, setCameraState] = useState({ 
-        cpu_health: 20, 
-        max_health: 20,
-        status: 'OK', 
-        image: '/media/camara.png' 
-      }); 
+      const [mitmParams, setMitmParams] = useState(() => generateMitmParams());
 
+      // Estados de datos
+      const [serverDB, setServerDB] = useState({});
+      const [cameraState, setCameraState] = useState({
+        cpu_health: 20,
+        max_health: 20,
+        status: CAMERA_STATUS_OK,
+        image: '/media/camara.png'
+      });
+
+      // Estados de la vista
       const [logs, setLogs] = useState([]);
       const [packets, setPackets] = useState([]);
       const logEndRef = useRef(null);
-      
-      const isDosInsecure = mode === 'dos_insecure';
-      const isCameraDown = cameraState.status === 'DOWN' && isDosInsecure; 
 
+      // ==========================================
+      // EFECTOS Y MANEJADORES
+      // ==========================================
 
-      const fetchDB = async () => {
-        try {
-          const res = await fetch(`${API_URL}/db`);
-          const data = await res.json();
-          setServerDB(data.db); 
-          setCameraState(data.camera_state); 
-        } catch (e) { console.error("Error conectando a backend", e); }
-      };
-
-      const resetBackend = async () => {
-        try {
-          await fetch(`${API_URL}/reset`, { method: 'POST' });
-          fetchDB();
+      /**
+       * Sincroniza el estado con el backend cuando cambia de modo
+       */
+      useEffect(() => {
+        (async () => {
+          const result = await resetBackendSystem();
+          if (result) {
+            setServerDB(result.db);
+            setCameraState(result.camera_state);
+          }
           setLogs([]);
           setPackets([]);
           setProtocolStep(0);
-          setCameraState({ cpu_health: 20, max_health: 20, status: 'OK', image: '/media/camara.png' });
-          // Restablecer inputs a los valores de Alice al reiniciar modo DoS
-          if (mode.includes('dos')) {
-             setDosMac('11:22:33:44:55:66');
-             setDosRssi(-45);
-             setSender('alice');
+          if (isMitmMode(mode)) {
+            // Obtener parámetros MITM del backend
+            try {
+              const backendParams = await fetch(`${API_URL}/mitm_params`).then(r => r.json());
+              setMitmParams(backendParams);
+            } catch (e) {
+              setMitmParams(generateMitmParams());
+            }
           }
-        } catch (e) { addLog("Error: No se pudo contactar con el Backend.", "danger"); }
-      };
-
-      useEffect(() => { 
-        resetBackend(); 
+          
+          // Restablecer inputs a los valores de Alice
+          if (isDoSMode(mode)) {
+            setDosMac('11:22:33:44:55:66');
+            setDosRssi(-45);
+            setSender('alice');
+          }
+        })();
       }, [mode]);
-      
-      useEffect(() => { 
-        logEndRef.current?.scrollIntoView({ behavior: "smooth" }); 
+
+      /**
+       * Auto-scroll al final de los logs
+       */
+      useEffect(() => {
+        logEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, [logs]);
 
-      const addLog = (msg, type = 'info') => {
-        const time = new Date().toLocaleTimeString().split(' ')[0];
-        setLogs(prev => [...prev, { id: Date.now() + Math.random(), time, msg, type }]);
-      };
-
-      const handleSendDoS = async () => {
-        const origin = sender === 'alice' ? POSITIONS.alice : POSITIONS.eve;
-        const isHacker = sender === 'eve';
-
-        if (isCameraDown) {
-            addLog("La cámara está caída, no se procesan más paquetes.", "error");
-            return;
+      /**
+       * Limpia los paquetes animados cuando la cámara cae (status = DOWN)
+       * para evitar animaciones pendientes y liberar recursos.
+       */
+      useEffect(() => {
+        if (isCameraDown(cameraState) && packets.length > 0) {
+          setPackets([]);
         }
+      }, [cameraState.status]);
 
-        animatePacket(origin, POSITIONS.bob, isHacker ? COLORS.danger : COLORS.safe, 'REQ');
-
-        try {
-          const res = await fetch(`${API_URL}/check_dos`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              // CAMBIO: Se envían los valores actuales de los inputs para MAC y RSSI, independientemente del sender.
-              mac: dosMac, 
-              rssi: parseInt(dosRssi),
-              is_secure_mode: mode === 'dos_secure'
-            })
-          });
-          const data = await res.json();
-
-          setTimeout(() => {
-            addLog(data.msg, data.status);
-            fetchDB();
-            setCameraState(data.camera_state); 
-          }, 800);
-        } catch (e) { addLog("Error de conexión con Backend", "danger"); }
+      /**
+       * Agrega un nuevo log a la pantalla
+       */
+      const addLog = (msg, type = LOG_TYPES.INFO) => {
+        const log = createLog(msg, type);
+        setLogs(prev => [...prev, log]);
       };
 
-      const handleProtocolStep = async () => {
-         const nextStep = protocolStep + 1;
-         const isSecure = mode === 'mitm_secure';
-         
-         const maxSteps = isSecure ? 6 : 4; 
-
-         if (protocolStep >= maxSteps) {
-             setProtocolStep(0); 
-             setLogs([]); 
-             addLog("Protocolo reiniciado", "neutral");
-             return;
-         }
-
-         try {
-             const res = await fetch(`${API_URL}/protocol_step`, {
-                 method: 'POST',
-                 headers: {'Content-Type': 'application/json'},
-                 body: JSON.stringify({ step: nextStep, mode: mode, mitm_active: mitmActive })
-             });
-             const data = await res.json();
-             
-             setProtocolStep(nextStep);
-             
-             // Animación basada en source/target del backend
-             const pOrigin = POSITIONS[data.source]; 
-             const pTarget = POSITIONS[data.target];
-             const pColor = mitmActive ? COLORS.danger : COLORS.safe;
-             
-             if (pOrigin && pTarget) {
-                 animatePacket(pOrigin, pTarget, pColor, `M${nextStep}`);
-             }
-             
-             setTimeout(() => addLog(data.msg, data.type), 800);
-
-         } catch (e) { addLog("Error Backend: " + e, "danger"); }
-      };
-
+      /**
+       * Anima un paquete desde origen a destino
+       */
       const animatePacket = (start, end, color, label) => {
         const id = Date.now();
         setPackets(prev => [...prev, { id, x: start.x, y: start.y, tx: end.x, ty: end.y, color, label, progress: 0 }]);
@@ -237,174 +809,320 @@
         requestAnimationFrame(step);
       };
 
+      /**
+       * Maneja el envío de un paquete DoS
+       */
+      const handleSendDoS = async () => {
+        if (isCameraDown(cameraState)) {
+          addLog("La cámara está caída, no se procesan más paquetes.", LOG_TYPES.ERROR);
+          return;
+        }
+
+        const origin = sender === 'alice' ? POSITIONS.alice : POSITIONS.hugo;
+        const isHacker = sender === 'hugo';
+        animatePacket(origin, POSITIONS.bob, isHacker ? COLORS.danger : COLORS.safe, 'REQ');
+
+        try {
+          const data = await sendDoSPacket(dosMac, dosRssi, isSecureMode(mode));
+          
+          setTimeout(() => {
+            addLog(data.msg, data.status);
+            setServerDB(data.db || serverDB);
+            setCameraState(data.camera_state);
+          }, 800);
+        } catch (e) {
+          addLog(e.message, LOG_TYPES.DANGER);
+        }
+      };
+
+      /**
+       * Maneja el siguiente paso del protocolo
+       */
+      const handleProtocolStep = async () => {
+        const nextStep = protocolStep + 1;
+        const maxSteps = getMaxSteps(mode);
+
+        if (protocolStep >= maxSteps) {
+          setProtocolStep(0);
+          setLogs([]);
+          addLog("Protocolo reiniciado", LOG_TYPES.NEUTRAL);
+          return;
+        }
+
+        try {
+          const data = await getProtocolStep(nextStep, mode, mitmActive);
+          
+          setProtocolStep(nextStep);
+
+          // Animar paquete según el protocolo
+          const pOrigin = POSITIONS[data.source];
+          const pTarget = POSITIONS[data.target];
+          const pColor = mitmActive ? COLORS.danger : COLORS.safe;
+
+          if (pOrigin && pTarget) {
+            animatePacket(pOrigin, pTarget, pColor, `M${nextStep}`);
+          }
+
+          // Enriquecer el mensaje con los valores numéricos del backend
+          let enrichedMsg = data.msg;
+          if (data.values && Object.keys(data.values).length > 0) {
+            const valueEntries = Object.entries(data.values)
+              .map(([key, val]) => `${key} = ${val}`)
+              .join(', ');
+            enrichedMsg = `${data.msg} [${valueEntries}]`;
+          }
+
+          setTimeout(() => addLog(enrichedMsg, data.type), 800);
+        } catch (e) {
+          addLog(e.message, LOG_TYPES.DANGER);
+        }
+      };
+
+      /**
+       * Calcula los valores de Hugo basado en Alice y Bob
+       */
+      const handleCalculateHugo = async () => {
+        try {
+          const response = await fetch(`${API_URL}/mitm_calculate_hugo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              g: mitmParams.g,
+              p: mitmParams.p,
+              alice: {
+                id: mitmParams.alice.id,
+                secret: mitmParams.alice.secret,
+                nonce: mitmParams.alice.nonce
+              },
+              bob: {
+                id: mitmParams.bob.id,
+                secret: mitmParams.bob.secret,
+                nonce: mitmParams.bob.nonce
+              }
+            })
+          });
+          const result = await response.json();
+          
+          // Actualizar los parámetros locales con los valores calculados
+          setMitmParams(prev => ({
+            ...prev,
+            hugo: result.hugo
+          }));
+          
+          // Log detallado del cálculo de Hugo
+          addLog(
+            `🎯 HUGO CALCULA: ga=${result.ga}, gb=${result.gb} (escuchados)`, 
+            LOG_TYPES.INFO
+          );
+          addLog(
+            `🎯 HUGO GENERA: ge=${result.ge}, NE=${result.hugo.nonce} (aleatorios)`, 
+            LOG_TYPES.INFO
+          );
+          addLog(
+            `🎯 HUGO COMPUTA: KAE = ga^e mod p = ${result.KAE}, KBE = gb^e mod p = ${result.KBE}`, 
+            LOG_TYPES.SUCCESS
+          );
+          addLog(
+            `${result.explanation}`, 
+            LOG_TYPES.SUCCESS
+          );
+        } catch (e) {
+          addLog(`Error calculando valores de Hugo: ${e.message}`, LOG_TYPES.DANGER);
+        }
+      };
+
+      /**
+       * Maneja cambios manuales en parámetros MITM (g, p, IDs, secretos, nonces)
+       * Recalcula g^secret mod p cuando corresponda y sincroniza con el backend.
+       */
+      const handleMitmParamChange = (scope, field, rawValue) => {
+        setMitmParams(prev => {
+          let value = rawValue;
+          const isNumberField = ['g', 'p', 'secret', 'nonce', 'public'].includes(field);
+          if (isNumberField) {
+            value = parseInt(rawValue || '0', 10);
+            if (Number.isNaN(value)) value = 0;
+          }
+
+          const next = structuredClone(prev);
+
+          if (scope === 'common') {
+            next[field] = value;
+            // Recalcular públicos con nuevos g/p
+            ['alice', 'bob', 'hugo'].forEach(actor => {
+              next[actor].public = modExp(next.g, next[actor].secret, next.p || 1);
+            });
+          } else {
+            // Actor
+            next[scope][field] = value;
+            if (field === 'secret') {
+              next[scope].public = modExp(next.g, next[scope].secret, next.p || 1);
+            }
+          }
+
+          // Sincronizar con el backend
+          (async () => {
+            try {
+              await fetch(`${API_URL}/mitm_params`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(next)
+              });
+            } catch (e) {
+              console.error("Error sincronizando MITM params con backend:", e);
+            }
+          })();
+
+          return next;
+        });
+      };
+
       return (
         <div className="flex flex-col h-screen bg-slate-900">
 
+          {/* HEADER */}
           <header className="bg-slate-800 border-b border-slate-700 p-3 flex justify-between items-center shadow-md z-20">
             <h1 className="font-bold text-white tracking-wide flex items-center gap-2">
               <span className="text-xl">🛡️</span> G-23 SECURITY DEMO
             </h1>
-            <select value={mode} onChange={(e) => setMode(e.target.value)} className="bg-slate-900 border border-blue-500 text-blue-100 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-600">
-              <option value="dos_insecure">DoS Attack (Vulnerable)</option>
-              <option value="dos_secure">DoS Protection (Paper)</option>
-              <option value="mitm_insecure">MitM Attack (Vulnerable)</option>
-              <option value="mitm_secure">MitM Protection (Paper)</option>
+            <select 
+              value={mode} 
+              onChange={(e) => setMode(e.target.value)} 
+              className="bg-slate-900 border border-blue-500 text-blue-100 rounded px-2 py-1 outline-none focus:ring-2 focus:ring-blue-600"
+            >
+              <option value={MODES.DOS_INSECURE}>DoS Attack (Vulnerable)</option>
+              <option value={MODES.DOS_SECURE}>DoS Protection (Paper)</option>
+              <option value={MODES.MITM_INSECURE}>MitM Attack (Vulnerable)</option>
+              <option value={MODES.MITM_SECURE}>MitM Protection (Paper)</option>
             </select>
           </header>
 
           <div className="flex flex-1 overflow-hidden">
 
+            {/* SIDEBAR CON CONTROLES */}
             <aside className="w-80 bg-slate-800 border-r border-slate-700 p-5 flex flex-col gap-6 overflow-y-auto z-10 shadow-xl">
-
-              {mode.includes('dos') && (
-                <div className="space-y-4 animate-[fadeIn_0.5s]">
-                
-                  
-                  
-                  <div className="bg-slate-700/50 p-3 rounded border border-slate-600">
-                    <label className="text-xs font-bold text-slate-400 block mb-2">QUIÉN ENVÍA:</label>
-                    <div className="flex gap-2">
-                      {/* CAMBIO: Los botones solo cambian el sender, no los valores de los inputs */}
-                      <button onClick={() => { setSender('alice'); }}
-                        className={`flex-1 py-2 rounded text-xs font-bold border transition-all ${sender === 'alice' ? 'bg-green-900/50 border-green-500 text-green-300' : 'border-slate-600 text-slate-400 hover:bg-slate-700'}`}>
-                        SEMÁFORO
-                      </button>
-                      <button onClick={() => setSender('eve')}
-                        className={`flex-1 py-2 rounded text-xs font-bold border transition-all ${sender === 'eve' ? 'bg-red-900/50 border-red-500 text-red-300' : 'border-slate-600 text-slate-400 hover:bg-slate-700'}`}>
-                        HACKER
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-bold text-slate-400">MAC ADDRESS</label>
-                    <input type="text" value={dosMac} onChange={(e) => setDosMac(e.target.value)} className="w-full bg-slate-900 border border-slate-600 rounded p-2 font-mono text-sm text-yellow-400 outline-none focus:border-yellow-500" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 flex justify-between">
-                      <span>RSSI ({dosRssi} dBm)</span>
-                    </label>
-                    <input type="range" min="-90" max="-10" value={dosRssi} onChange={(e) => setDosRssi(e.target.value)} className="w-full accent-blue-500 h-2 bg-slate-700 rounded appearance-none" />
-                  </div>
-                  <button 
-                    onClick={handleSendDoS} 
-                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded shadow-md active:scale-95 transition-transform disabled:bg-slate-500 disabled:cursor-not-allowed" 
-                    disabled={isCameraDown}
-                  >
-                    {isCameraDown ? 'SISTEMA CAÍDO (CPU 0)' : 'ENVIAR PAQUETE'}
-                  </button>
-
-                  <div className="mt-4 border-t border-slate-600 pt-4">
-                    <h4 className="text-[10px] font-bold text-slate-500 mb-2 uppercase">Estado Servidor (Backend)</h4>
-                    <div className="space-y-1.5">
-                      {Object.entries(serverDB).map(([mac, val]) => (
-                        <div key={mac} className="flex justify-between items-center text-[10px] bg-slate-900 p-2 rounded border border-slate-700">
-                          <span className="font-mono text-slate-300">{mac.slice(0, 11)}...</span>
-                          <span className={`px-1.5 py-0.5 rounded font-bold ${val.status === 'connected' ? 'bg-green-900 text-green-300' : 'bg-slate-700 text-slate-500'}`}>
-                            {val.status === 'connected' ? 'ONLINE' : 'OFF'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+              {isDoSMode(mode) && (
+                <DoSPanel 
+                  dosMac={dosMac}
+                  onMacChange={setDosMac}
+                  dosRssi={dosRssi}
+                  onRssiChange={setDosRssi}
+                  sender={sender}
+                  onSenderChange={setSender}
+                  onSendPacket={handleSendDoS}
+                  isCameraDown={isCameraDown(cameraState)}
+                  serverDB={serverDB}
+                />
               )}
 
-              {mode.includes('mitm') && (
-                <div className="space-y-5 animate-[fadeIn_0.5s]">
-                  <div className="bg-slate-700/50 p-3 rounded-lg border border-slate-600 flex justify-between items-center cursor-pointer group" onClick={() => setMitmActive(!mitmActive)}>
-                    <span className="text-xs font-bold text-red-400 group-hover:text-red-300 transition-colors">ATAQUE ACTIVO</span>
-                    <div className={`w-10 h-5 rounded-full relative transition-colors ${mitmActive ? 'bg-red-500' : 'bg-slate-600'}`}>
-                      <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform shadow-sm ${mitmActive ? 'translate-x-5' : ''}`}></div>
-                    </div>
-                  </div>
-                  <div className="text-center p-4 bg-slate-900 rounded border border-slate-700">
-                    <div className="text-4xl font-bold text-white mb-1">{protocolStep} / {mode === 'mitm_secure' ? 6 : 4}</div>
-                    <div className="text-xs text-purple-300 font-bold uppercase tracking-wider">Paso del Protocolo</div>
-                  </div>
-                  <button onClick={handleProtocolStep} className="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded shadow-md active:scale-95 transition-transform">
-                    {protocolStep === 0 ? '▶ INICIAR PROTOCOLO' : protocolStep >= (mode === 'mitm_secure' ? 6 : 4) ? '↺ REINICIAR' : '⬇ SIGUIENTE PASO'}
-                  </button>
-                </div>
+              {isMitmMode(mode) && (
+                <MitmPanel 
+                  protocolStep={protocolStep}
+                  mode={mode}
+                  mitmActive={mitmActive}
+                  onMitmToggle={setMitmActive}
+                  onProtocolStep={handleProtocolStep}
+                  onCalculateHugo={handleCalculateHugo}
+                  params={mitmParams}
+                  onParamChange={handleMitmParamChange}
+                  disabled={protocolStep > 0}
+                />
               )}
             </aside>
 
+            {/* ÁREA PRINCIPAL */}
             <div className="flex-1 flex flex-col min-w-0">
 
+              {/* CANVAS CON LA VISUALIZACIÓN */}
               <div className="flex-1 relative bg-slate-900 overflow-hidden">
-                <svg className="w-full h-full absolute inset-0 select-none">
+                <svg className="w-full h-full absolute inset-0 select-none" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
                   <defs>
-                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="1" />
+                    <pattern id="grid" width="5" height="5" patternUnits="userSpaceOnUse">
+                      <path d="M 5 0 L 0 0 0 5" fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth="0.1" />
                     </pattern>
                   </defs>
                   <rect width="100%" height="100%" fill="url(#grid)" />
 
-                  <line x1={POSITIONS.alice.x} y1={POSITIONS.alice.y} x2={POSITIONS.bob.x} y2={POSITIONS.bob.y} stroke="#334155" strokeWidth="3" strokeDasharray="8,8" />
+                  {/* Línea de conexión entre Alice y Bob */}
+                  <line 
+                    x1={POSITIONS.alice.x} 
+                    y1={POSITIONS.alice.y} 
+                    x2={POSITIONS.bob.x} 
+                    y2={POSITIONS.bob.y} 
+                    stroke="#334155" 
+                    strokeWidth="0.3" 
+                    strokeDasharray="1,1" 
+                  />
 
+                  {/* Paquetes animados */}
+                  {/* 📐 TAMAÑO PAQUETES: r=radio círculo, fontSize=texto */}
                   {packets.map(p => (
                     <g key={p.id} className="drop-shadow-md">
-                      <circle cx={p.x} cy={p.y} r="16" fill={p.color} stroke="white" strokeWidth="2" />
-                      <text x={p.x} y={p.y + 5} textAnchor="middle" fill="white" fontSize="11" fontWeight="bold">{p.label}</text>
+                      <circle cx={p.x} cy={p.y} r="4" fill={p.color} stroke="white" strokeWidth="0.4" />
+                      <text x={p.x} y={p.y + 1.6} textAnchor="middle" fill="white" fontSize="3" fontWeight="bold">{p.label}</text>
                     </g>
                   ))}
 
-                  {/* ALICE = SEMÁFORO (Izquierda) */}
+                  {/* ALICE - Semáforo (Dispositivo legítimo) */}
+                  {/* 📐 TAMAÑO ALICE: r=radio círculo, width/height=imagen, fontSize=texto */}
                   <g transform={`translate(${POSITIONS.alice.x}, ${POSITIONS.alice.y})`}>
-                    <circle r="55" fill="#0f172a" stroke={COLORS.safe} strokeWidth="3" className="drop-shadow-[0_0_20px_rgba(16,185,129,0.2)]" />
-                    <image href="/media/semaforo.png" x="-40" y="-40" width="80" height="80" />
-                    <text textAnchor="middle" dy="75" fill="white" fontSize="16" fontWeight="bold">ALICE</text>
-                    <text textAnchor="middle" dy="95" fill="#64748b" fontSize="12" fontFamily="monospace">Semáforo 5G</text>
+                    <circle r="14" fill="#0f172a" stroke={COLORS.safe} strokeWidth="0.8" className="drop-shadow-[0_0_20px_rgba(16,185,129,0.2)]" />
+                    <image href="/media/semaforo.png" x="-10" y="-10" width="20" height="20" />
+                    <text textAnchor="middle" dy="20" fill="white" fontSize="4" fontWeight="bold">{ACTOR_NAMES.alice}</text>
+                    <text textAnchor="middle" dy="25" fill="#64748b" fontSize="3" fontFamily="monospace">{ACTOR_ROLES.alice}</text>
                   </g>
 
-                  {/* BOB = CÁMARA (Derecha) */}
+                  {/* BOB - Cámara (Servidor IoT) */}
+                  {/* 📐 TAMAÑO BOB: r=radio círculo, width/height=imagen, fontSize=texto */}
                   <g transform={`translate(${POSITIONS.bob.x}, ${POSITIONS.bob.y})`}>
-                    {/* El color del borde y la animación 'attacking' dependen del estado de la CPU */}
-                    <circle r="55" fill="#0f172a" 
-                      stroke={isCameraDown ? COLORS.danger : COLORS.neutral} 
-                      strokeWidth="3" 
-                      className={`drop-shadow-[0_0_25px_rgba(59,130,246,0.3)] ${isCameraDown ? 'attacking' : ''}`} />
-                    
-                    {/* La imagen de la cámara cambia si está DOWN */}
-                    <image href={cameraState.image} x="-40" y="-40" width="80" height="80" />
-                    <text textAnchor="middle" dy="75" fill="white" fontSize="16" fontWeight="bold">BOB</text>
-                    <text textAnchor="middle" dy="95" fill="#64748b" fontSize="12" fontFamily="monospace">Cámara IoT</text>
+                    <circle 
+                      r="14" 
+                      fill="#0f172a" 
+                      stroke={isCameraDown(cameraState) ? COLORS.danger : COLORS.neutral} 
+                      strokeWidth="0.8" 
+                      className={`drop-shadow-[0_0_25px_rgba(59,130,246,0.3)] ${isCameraDown(cameraState) ? 'attacking' : ''}`} 
+                    />
+                    <image href={cameraState.image} x="-10" y="-10" width="20" height="20" />
+                    <text textAnchor="middle" dy="20" fill="white" fontSize="4" fontWeight="bold">{ACTOR_NAMES.bob}</text>
+                    <text textAnchor="middle" dy="25" fill="#64748b" fontSize="3" fontFamily="monospace">{ACTOR_ROLES.bob}</text>
                   </g>
 
-                  {/* EVE (Hacker) */}
-                  <g transform={`translate(${POSITIONS.eve.x}, ${POSITIONS.eve.y})`} className={`transition-all duration-500 ${mitmActive || sender === 'eve' ? 'opacity-100' : 'opacity-40 grayscale'}`}>
-                    <path d="M0,-55 L50,40 L-50,40 Z" fill="#0f172a" stroke={COLORS.danger} strokeWidth="3" className={mitmActive || sender === 'eve' ? 'attacking drop-shadow-[0_0_20px_rgba(239,68,68,0.4)]' : ''} />
-                    <image href="/media/hacker.png" x="-35" y="-35" width="70" height="70" />
-                    <text textAnchor="middle" dy="65" fill={COLORS.danger} fontSize="16" fontWeight="bold">HUGO</text>
-                    <text textAnchor="middle" dy="85" fill="#ef4444" fontSize="12" fontFamily="monospace">Atacante</text>
+                  {/* HUGO - Atacante (Hacker) */}
+                  {/* 📐 TAMAÑO HUGO: path d=triángulo, width/height=imagen, fontSize=texto */}
+                  <g 
+                    transform={`translate(${POSITIONS.hugo.x}, ${POSITIONS.hugo.y})`} 
+                    className={`transition-all duration-500 ${mitmActive || sender === 'hugo' ? 'opacity-100' : 'opacity-40 grayscale'}`}
+                  >
+                    <path 
+                      d="M0,-14 L13,10 L-13,10 Z" 
+                      fill="#0f172a" 
+                      stroke={COLORS.danger} 
+                      strokeWidth="0.8" 
+                      className={mitmActive || sender === 'hugo' ? 'attacking drop-shadow-[0_0_20px_rgba(239,68,68,0.4)]' : ''} 
+                    />
+                    <image href="/media/hacker.png" x="-9" y="-9" width="18" height="18" />
+                    <text textAnchor="middle" dy="17" fill={COLORS.danger} fontSize="4" fontWeight="bold">{ACTOR_NAMES.hugo}</text>
+                    <text textAnchor="middle" dy="22" fill="#ef4444" fontSize="3" fontFamily="monospace">{ACTOR_ROLES.hugo}</text>
                   </g>
                 </svg>
               </div>
 
-              <div className="h-64 bg-black border-t-4 border-slate-700 flex-none flex flex-col shadow-[0_-5px_20px_rgba(0,0,0,0.5)] z-20">
-                <div className="bg-slate-800 px-4 py-2 flex justify-between items-center border-b border-slate-700">
-                  <span className="text-xs font-bold text-green-400 flex items-center gap-2 uppercase tracking-wider">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> System Security Logs
-                  </span>
-                  <button onClick={() => setLogs([])} className="text-[10px] text-slate-400 hover:text-white uppercase border border-slate-600 px-2 py-0.5 rounded transition-colors hover:bg-slate-700">Limpiar Consola</button>
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 font-mono text-xs space-y-2 scroll-smooth bg-black/50">
-                  {logs.length === 0 && <p className="text-slate-600 italic text-center mt-10">Esperando eventos de red...</p>}
-                  {logs.map(l => (
-                    <div key={l.id} className={`border-l-4 pl-3 py-1 ${l.type === 'danger' || l.type === 'error' ? 'border-red-500 bg-red-900/20 text-red-300' : l.type === 'success' ? 'border-green-500 bg-green-900/20 text-green-300' : 'border-blue-500 text-blue-300'}`}>
-                      <span className="text-slate-500 mr-3">[{l.time}]</span>
-                      <span className="font-semibold">{l.msg}</span>
-                    </div>
-                  ))}
-                  <div ref={logEndRef} />
-                </div>
-              </div>
+              {/* PANEL DE LOGS */}
+              <LogsPanel 
+                logs={logs} 
+                onClearLogs={() => setLogs([])} 
+                logEndRef={logEndRef}
+              />
 
             </div>
           </div>
         </div>
       );
     };
+
+    // ==========================================
+    // RENDERIZACIÓN
+    // ==========================================
 
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(<App />);
