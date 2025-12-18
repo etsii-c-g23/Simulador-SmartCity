@@ -450,4 +450,3 @@ Al activar/desactivar el ataque MITM, el protocolo se reinicia automáticamente 
 
 ---
 
-*Guía de Usuario v1.1 - Diciembre 2025*
