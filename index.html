@@ -967,6 +967,18 @@
       };
 
       /**
+       * Alterna el estado de ataque MITM y reinicia el protocolo
+       */
+      const handleMitmToggle = (active) => {
+        setMitmActive(active);
+        setProtocolStep(0);
+        setLogs([]);
+        setPackets([]);
+        addLog(`Ataque MITM ${active ? 'activado' : 'desactivado'}`, LOG_TYPES.NEUTRAL);
+        addLog('Protocolo reiniciado', LOG_TYPES.NEUTRAL);
+      };
+
+      /**
        * Maneja cambios manuales en parámetros MITM (g, p, MACs, exponentes, nonces)
        * Recalcula g^secret mod p cuando corresponda y sincroniza con el backend.
        */
@@ -1056,7 +1068,7 @@
                   protocolStep={protocolStep}
                   mode={mode}
                   mitmActive={mitmActive}
-                  onMitmToggle={setMitmActive}
+                  onMitmToggle={handleMitmToggle}
                   onProtocolStep={handleProtocolStep}
                   params={mitmParams}
                   onParamChange={handleMitmParamChange}
