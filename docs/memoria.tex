@@ -16,12 +16,15 @@
 \usepackage[hidelinks]{hyperref} % Hipervínculos en el documento, hidelinks quita los recuadros  de los links
 \usepackage{multirow} % Permite combinar filas en tablas
 \usepackage{array} % Mejoras en el entorno de tablas
+\usepackage{fontawesome5} % Iconos de FontAwesome
 \usepackage{tabularx} % Tablas con ancho automático
 \usepackage{todonotes} % Permite insertar notas de tareas pendientes en el documento
 \usepackage{placeins} % Permite usar el comando \FloatBarrier para controlar la posición de figuras y tablas flotantes
 \usepackage{enumitem} % Permite personalizar listas (ítems, enumeraciones)
 \usepackage{algorithm} % Entorno para escribir algoritmos
 \usepackage{algpseudocode} % Entorno para escribir pseudocódigo dentro de algoritmos
+\usepackage{tikz} % Diagramas y gráficos vectoriales
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, calc, babel} % Librerías de TikZ para diagramas
 
 % Configuración para que los inputs/outputs de un algoritmo salgan en español
 \renewcommand{\algorithmicrequire}{\textbf{Entrada:}}
@@ -122,13 +125,90 @@ El articulo propone un protocolo de autenticación mutua y de establecimiento de
 \section{Contexto}
 
 \subsection{WiFi-Direct}
-El WiFi Direct es un protocolo de conexión de dispositivos, el cual permite a dos entidades conectarse sin la necesidad de un router externo. Esto permite una mayor transmisión de datos y una menor latencia, mejorando la eficiencia. Su funcionamiento se basa en las siguientes 4 fases:
+El WiFi Direct es un protocolo de conexión de dispositivos, el cual permite a dos entidades conectarse sin la necesidad de un router externo. Esto permite una mayor transmisión de datos y una menor latencia, mejorando la eficiencia. Su funcionamiento se basa en las siguientes 4 fases (Fig. \ref{fig:diagrama_fases}):
 \begin{enumerate}
     \item \textbf{Fase de descubrimiento:} Es la fase inicial donde los dispositivos se detectan entre ellos para realizar las conexiones peer-to-peer(P2P). La búsqueda entre dispositivos se hace sin la necesidad de un router por el cual hacer las conexiones. 
     \item \textbf{Negociación de grupo:} Los dispositivos determinan quien actuará como Group Owner(GO), el cual es el que controla las comunicaciones del grupo. Este proceso se elige al GO, mediante un  handshake, donde cada participante del grupo P2P envía un “valor de intención”. El dispositivo que posea el valor intención más alto es quien se convierte en GO del grupo P2P.
     \item \textbf{Proceso WPS:} Se ejecuta el mecanismo de seguridad mediante WiFi Protected Setup (WPS), donde se lleva a cabo el acuerdo de claves y la autenticación mutua. Dentro del proceso de seguridad tradicional de WPS, el GO actúa como registrador para enviar las credenciales de seguridad de la red a las entidades del WiFi Direct. Tras esta fase, la protección del tráfico suele apoyarse en WPA (Wi-Fi Protected Access).
     \item \textbf{Configuración de dirección:} Finalmente una vez autenticados, el GO asigna direcciones IP (típicamente vía DHCP) y se establece el canal D2D operativo.
 \end{enumerate}
+
+\begin{figure*}[htbp]
+\centering
+\begin{tikzpicture}[
+    % --- CONFIGURACIÓN DE FLECHAS ---
+    >={Latex[width=2.5mm, length=3.5mm]}, 
+    thick,
+    font=\footnotesize,
+    % Estilos de Cajas
+    device/.style={draw, rectangle, minimum height=1cm, minimum width=2cm, rounded corners, font=\bfseries, fill=gray!10},
+    msgbox/.style={midway, fill=white, inner sep=2pt, text=black, align=center, font=\small\bfseries, draw=none, rounded corners, rotate=90},
+    % Estilo de Línea Discontinua (Gruesa y visible)
+    linea/.style={draw, gray, line width=1.2pt, dash pattern=on 6pt off 6pt}
+]
+    \pgfdeclarelayer{bg}
+    \pgfsetlayers{bg,main}
+
+    % --- DEFINIR ACTORES ---
+    \node[device] (A) at (0, 5) {Dispositivo A};
+    \node[device] (B) at (0, 0) {Dispositivo B};
+
+    % --- LÍNEAS DE TIEMPO (Ajustadas a 16.5cm para no sobresalir) ---
+    % Antes era 17, ahora 16.5 coincide con el final del bloque rojo.
+    \draw[linea] (A.east) -- ++(15.5,0) coordinate (A_end);
+    \draw[linea] (B.east) -- ++(15.5,0) coordinate (B_end);
+
+    % --- MENSAJES ---
+    
+    % -- FASE 1: DISCOVERY (x = 1.8, 2.8) --
+    \draw[->, orange] (1.8, 5) -- node[msgbox] {Probe Request} (1.8, 0);
+    \draw[<-, orange] (2.8, 5) -- node[msgbox] {Probe Response} (2.8, 0);
+
+    % -- FASE 2: GO NEGOTIATION (x = 4.5, 5.5, 6.5) --
+    \draw[->, blue] (4.5, 5) -- node[msgbox] {GO Neg. Request} (4.5, 0);
+    \draw[<-, blue] (5.5, 5) -- node[msgbox] {GO Neg. Response} (5.5, 0);
+    \draw[->, blue] (6.5, 5) -- node[msgbox] {GO Neg. Confirm} (6.5, 0);
+
+    % -- FASE 3: WPS (x = 8.5, 9.8) --
+    \draw[->, red] (8.5, 5) -- node[msgbox] {Authentication Req.} (8.5, 0);
+    \draw[<->, red] (9.8, 5) -- node[msgbox] {EAPOL Key (4/4)} (9.8, 0);
+
+    % -- FASE 4: ADDRESS CONFIG (x = 11.8, 13.0, 14.2, 15.4) --
+    \draw[->, green] (11.8, 5) -- node[msgbox] {DHCP Discover} (11.8, 0);
+    \draw[<-, green] (13.0, 5) -- node[msgbox] {DHCP Offer} (13.0, 0);
+    \draw[->, green] (14.2, 5) -- node[msgbox] {DHCP Request} (14.2, 0);
+    \draw[<-, green] (15.4, 5) -- node[msgbox] {DHCP ACK} (15.4, 0);
+
+    % --- BARRAS DE FONDO ---
+    \begin{pgfonlayer}{bg}
+        % Discovery: 1.0 a 3.5
+        \fill[orange!10] (1.0, 5.5) rectangle (3.5, -0.5);
+        \node[text=orange!50!black, font=\bfseries] at (2.25, -0.8) {Discovery};
+
+        % GO Negotiation: 3.5 a 7.5
+        \fill[blue!10] (3.5, 5.5) rectangle (7.5, -0.5);
+        \node[text=blue!50!black, font=\bfseries] at (5.5, -0.8) {GO Neg.};
+
+        % WPS: 7.5 a 10.8
+        \fill[red!10] (7.5, 5.5) rectangle (10.8, -0.5);
+        \node[text=red!50!black, font=\bfseries] at (9.15, -0.8) {WPS};
+
+        % Address Config: 10.8 a 16.5 (Termina justo aqui)
+        \fill[green!10] (10.8, 5.5) rectangle (16.5, -0.5);
+        \node[text=green!50!black, font=\bfseries] at (13.65, -0.8) {Address Config};
+        
+        % Separadores verticales
+        \draw[gray!30] (3.5, 3.5) -- (3.5, -0.5);
+        \draw[gray!30] (7.5, 3.5) -- (7.5, -0.5);
+        \draw[gray!30] (10.8, 3.5) -- (10.8, -0.5);
+    \end{pgfonlayer}
+
+\end{tikzpicture}
+\caption{Diagrama de secuencia detallado de la conexión WiFi Direct estándar.}
+\label{fig:diagrama_fases}
+\end{figure*}
+
+
 
 \subsection{Protocolo de clave SAS}
 El protocolo Short Authentication String (SAS) es un acuerdo de clave diseñado para la autenticación mutua y el establecimiento de claves en las comunicaciones Device-to-Device (D2D). Se apoya en  Diffie-Hellman como mecanismo fundamental para establecer una clave secreta. 
@@ -216,7 +296,94 @@ Para el análisis formal de seguridad, asumimos un adversario activo bajo el mod
 
 % --- 4. PROTOCOLO PROPUESTO ---
 \section{Protocolo propuesto}
-Las fases más propensas a ataques son Descubrimiento y Autenticación. El protocolo propone soluciones específicas para ellas.
+Las fases más propensas a ataques son Descubrimiento y Autenticación, como se muestra en la Fig. \ref{fig:diagrama_fases_redux}. El protocolo propone soluciones específicas para ellas.
+
+\begin{figure*}[htbp]
+\centering
+\begin{tikzpicture}[
+    % --- CONFIGURACIÓN DE FLECHAS ---
+    >={Latex[width=2.5mm, length=3.5mm]}, 
+    thick,
+    font=\footnotesize,
+    % Estilos de Cajas
+    device/.style={draw, rectangle, minimum height=1cm, minimum width=2cm, rounded corners, font=\bfseries, fill=gray!10},
+    msgbox/.style={midway, fill=white, inner sep=2pt, text=black, align=center, font=\small\bfseries, draw=none, rounded corners, rotate=90},
+    % Estilo de Línea Discontinua (Gruesa y visible)
+    linea/.style={draw, gray, line width=1.2pt, dash pattern=on 6pt off 6pt}
+]
+    \pgfdeclarelayer{bg}
+    \pgfsetlayers{bg,main}
+
+    % --- DEFINIR ACTORES ---
+    \node[device] (A) at (0, 3) {Dispositivo A};
+    \node[device] (B) at (0, 0) {Dispositivo B};
+
+    % --- LÍNEAS DE TIEMPO (Ajustadas a 16.5cm para no sobresalir) ---
+    % Antes era 17, ahora 16.5 coincide con el final del bloque rojo.
+    \draw[linea] (A.east) -- ++(15.5,0) coordinate (A_end);
+    \draw[linea] (B.east) -- ++(15.5,0) coordinate (B_end);
+
+    % --- MENSAJES ---
+    
+    % -- FASE 1: DISCOVERY (x = 1.8, 2.8) --
+    \draw[->, orange] (1.8, 3) -- (1.8, 0);
+    \draw[<-, orange] (2.8, 3) -- (2.8, 0);
+
+    % -- FASE 2: GO NEGOTIATION (x = 4.5, 5.5, 6.5) --
+    \draw[->, black] (4.5, 3) -- (4.5, 0);
+    \draw[<-, black] (5.5, 3) -- (5.5, 0);
+    \draw[->, black] (6.5, 3) -- (6.5, 0);
+
+    % -- FASE 3: WPS (x = 8.5, 9.8) --
+    \draw[->, red] (8.5, 3) -- (8.5, 0);
+    \draw[<->, red] (9.8, 3) -- (9.8, 0);
+
+    % -- FASE 4: ADDRESS CONFIG (x = 11.8, 13.0, 14.2, 15.4) --
+    \draw[->, gray] (11.8, 3) -- (11.8, 0);
+    \draw[<-, gray] (13.0, 3) -- (13.0, 0);
+    \draw[->, gray] (14.2, 3) -- (14.2, 0);
+    \draw[<-, gray] (15.4, 3) -- (15.4, 0);
+
+    % --- BARRAS DE FONDO ---
+    \begin{pgfonlayer}{bg}
+        % Discovery: 1.0 a 3.5
+        \fill[orange!10] (1.0, 3.5) rectangle (3.5, -0.5);
+        \node[text=orange!50!black, font=\bfseries] at (2.25, -0.8) {Discovery};
+
+        % GO Negotiation: 3.5 a 7.5
+        \fill[white!10] (3.5, 3.5) rectangle (7.5, -0.5);
+        \node[text=black!50!black, font=\bfseries] at (5.5, -0.8) {GO Neg.};
+
+        % WPS: 7.5 a 10.8
+        \fill[red!10] (7.5, 3.5) rectangle (10.8, -0.5);
+        \node[text=red!50!black, font=\bfseries] at (9.15, -0.8) {WPS};
+
+        % Address Config: 10.8 a 16.5 (Termina justo aqui)
+        \fill[gray!10] (10.8, 3.5) rectangle (16.5, -0.5);
+        \node[text=gray!50!black, font=\bfseries] at (13.65, -0.8) {Address Config};
+        
+        % Separadores verticales
+        \draw[gray!30] (3.5, 3.5) -- (3.5, -0.5);
+        \draw[gray!30] (7.5, 3.5) -- (7.5, -0.5);
+        \draw[gray!30] (10.8, 3.5) -- (10.8, -0.5);
+
+        % --- ZONA DISCOVERY ---
+    % Triángulo de peligro
+    \node[text=orange!50!black, scale=2.5] at (2.3, 2.2) {\faExclamationTriangle};
+    % Hacker (User Secret)
+    \node[text=orange!50!black, scale=2.5] at (2.3, 0.4) {\faUserSecret};
+
+    % --- ZONA WPS ---
+    % Triángulo
+    \node[text=red!50!black, scale=2.5] at (9.15, 2.2) {\faExclamationTriangle};
+    % Hacker
+    \node[text=red!50!black, scale=2.5] at (9.15, 0.4) {\faUserSecret};
+    \end{pgfonlayer}
+
+\end{tikzpicture}
+\caption{Etapas críticas en la conexión WiFi Direct estándar.}
+\label{fig:diagrama_fases_redux}
+\end{figure*}
 
 \subsection{Fase de descubrimiento}
 Los dispositivos Wifi Direct deben escuchar \textit{probe requests}. Esto permite ataques DoS mediante solicitudes falsas masivas. Se plantea un mecanismo de filtrado.
@@ -337,89 +504,94 @@ La consecuencia final se ilustra en la Fig. \ref{fig:dos_colapso}. Una vez que l
 \subsection{Escenario 2: Protección DoS (Propuesta)}
 Para validar la robustez del algoritmo de filtrado contextual, se ha diseñado una prueba secuencial de cinco fases que evalúa la capacidad del sistema para distinguir entre usuarios legítimos y atacantes basándose en la identidad (MAC) y el contexto físico (RSSI).
 
-En primer lugar, el dispositivo legítimo (Semáforo) solicita acceso con sus credenciales reales (MAC terminada en \texttt{:66}) y una potencia de señal de -45 dBm. La Fig. \ref{fig:fase1} muestra cómo el sistema verifica la solicitud y concede el acceso ("ACCESO CONCEDIDO"), estableciendo una sesión activa.
+En primer lugar, el dispositivo legítimo (Semáforo) solicita acceso con sus credenciales reales (Fig. \ref{fig:escenario2_envio1}: MAC terminada en \texttt{:66}) y una potencia de señal de -45 dBm. La Fig. \ref{fig:escenario2_logs1} muestra cómo el sistema verifica la solicitud y concede el acceso, estableciendo una sesión activa.
 
 \begin{figure}[H]
     \centering
-    \begin{minipage}{0.48\textwidth}
+    \begin{minipage}{0.32\textwidth}
         \centering
         \includegraphics[width=\linewidth]{img/escenario2_envio1.png}
-        \caption{Fase 1: Solicitud legítima del Semáforo.}
+        \caption{ Solicitud legítima.}
+        \label{fig:escenario2_envio1}
     \end{minipage}\hfill
-    \begin{minipage}{0.48\textwidth}
+    \begin{minipage}{0.66\textwidth}
         \centering
         \includegraphics[width=\linewidth]{img/escenario2_logs1.png}
         \caption{Resultado: Dispositivo verificado.}
+        \label{fig:escenario2_logs1}
     \end{minipage}
-    \label{fig:fase1}
 \end{figure}
 
-El atacante (Hugo el Hacker) intenta suplantar al semáforo copiando exactamente sus parámetros: misma dirección MAC y mismo RSSI (-45 dBm). Como se observa en la Fig. \ref{fig:fase2}, el protocolo detecta que esa MAC ya tiene una sesión activa registrada y bloquea inmediatamente el intento, protegiendo la integridad de la sesión en curso.
+El atacante (Hugo el Hacker) intenta suplantar al semáforo copiando exactamente sus parámetros (Fig. \ref{fig:escenario2_envio2}): misma dirección MAC y mismo RSSI (-45 dBm). Como se observa en la Fig. \ref{fig:escenario2_logs2}, el protocolo detecta que esa MAC ya tiene una sesión activa registrada y bloquea inmediatamente el intento, protegiendo la integridad de la sesión en curso.
 
 \begin{figure}[H]
     \centering
-    \begin{minipage}{0.48\textwidth}
+    \begin{minipage}{0.32\textwidth}
         \centering
         \includegraphics[width=\linewidth]{img/escenario2_envio2.png}
-        \caption{Fase 2: Intento con misma MAC y RSSI.}
+        \caption{Intento con misma MAC y RSSI.}
+        \label{fig:escenario2_envio2}
     \end{minipage}\hfill
-    \begin{minipage}{0.48\textwidth}
+    \begin{minipage}{0.66\textwidth}
         \centering
         \includegraphics[width=\linewidth]{img/escenario2_logs2.png}
         \caption{Resultado: Bloqueo por sesión activa.}
+        \label{fig:escenario2_logs2}
     \end{minipage}
-    \label{fig:fase2}
-\end{figure}
+ç\end{figure}
 
-El atacante modifica su estrategia: mantiene la MAC suplantada pero altera la potencia de emisión a -67 dBm, intentando simular un cambio de posición o fluctuación. La Fig. \ref{fig:fase3} evidencia que el sistema no se deja engañar; al persistir el uso de una MAC ya registrada en el sistema, la solicitud sigue siendo rechazada ("BLOQUEADO") independientemente del cambio en la señal.
+El atacante modifica su estrategia: mantiene la MAC suplantada pero altera la potencia de emisión a -67 dBm (Fig. \ref{fig:escenario2_envio3}), intentando simular un cambio de posición o fluctuación. La Fig. \ref{fig:escenario2_logs3} evidencia que el sistema no se deja engañar; al persistir el uso de una MAC ya registrada en el sistema, la solicitud sigue siendo rechazada ("BLOQUEADO") independientemente del cambio en la señal.
 
 \begin{figure}[H]
     \centering
-    \begin{minipage}{0.48\textwidth}
+    \begin{minipage}{0.32\textwidth}
         \centering
         \includegraphics[width=\linewidth]{img/escenario2_envio3.png}
-        \caption{Fase 3: Misma MAC con RSSI modificado.}
+        \caption{Misma MAC con RSSI modificado.}
+        \label{fig:escenario2_envio3}
     \end{minipage}\hfill
-    \begin{minipage}{0.48\textwidth}
+    \begin{minipage}{0.66\textwidth}
         \centering
         \includegraphics[width=\linewidth]{img/escenario2_logs3.png}
         \caption{Resultado: Persistencia del bloqueo.}
+        \label{fig:escenario2_logs3}
     \end{minipage}
-    \label{fig:fase3}
 \end{figure}
 
-En esta fase, el atacante cambia su identidad (MAC nueva terminada en \texttt{:FF}) pero vuelve a emitir con la potencia original del semáforo (-45 dBm). El algoritmo de filtrado contextual identifica una anomalía física: es improbable que dos dispositivos distintos ocupen exactamente el mismo espacio radioeléctrico (mismo RSSI exacto). Por tanto, como muestra la Fig. \ref{fig:fase4}, se bloquea la solicitud por "Distinta MAC en misma ubicación".
+En esta fase, el atacante cambia su identidad (Fig. \ref{fig:escenario2_envio4}), MAC nueva terminada en \texttt{:FF}, pero vuelve a emitir con la potencia original del semáforo (-45 dBm). El algoritmo de filtrado contextual identifica una anomalía física: es improbable que dos dispositivos distintos ocupen exactamente el mismo espacio radioeléctrico (mismo RSSI exacto). Por tanto, como muestra la Fig. \ref{fig:escenario2_logs4}, se bloquea la solicitud por "Distinta MAC en misma ubicación".
 
 \begin{figure}[H]
     \centering
-    \begin{minipage}{0.48\textwidth}
+    \begin{minipage}{0.32\textwidth}
         \centering
         \includegraphics[width=\linewidth]{img/escenario2_envio4.png}
-        \caption{Fase 4: Nueva MAC con RSSI sospechoso.}
+        \caption{Nueva MAC con RSSI ya almacenado.}
+        \label{fig:escenario2_envio4}
     \end{minipage}\hfill
-    \begin{minipage}{0.48\textwidth}
+    \begin{minipage}{0.66\textwidth}
         \centering
         \includegraphics[width=\linewidth]{img/escenario2_logs4.png}
-        \caption{Resultado: Bloqueo por anomalía física.}
+        \caption{Bloqueo por tener misma MAC en distinta ubicación.}
+        \label{fig:escenario2_logs4}
     \end{minipage}
-    \label{fig:fase4}
 \end{figure}
 
-Finalmente, se simula una conexión válida donde cambian tanto la identidad como el contexto. El dispositivo presenta una MAC nueva y un RSSI diferente (-19 dBm), lo cual es coherente con un nuevo nodo en la red. La Fig. \ref{fig:fase5} confirma que el sistema valida estos parámetros al no encontrar conflictos, registrando exitosamente el "NUEVO DISPOSITIVO".
+Finalmente, se simula una conexión válida donde cambian tanto la identidad como el contexto. El dispositivo presenta una MAC nueva y un RSSI diferente (-19 dBm) (Fig. \ref{fig:escenario2_envio5}), lo cual es coherente con un nuevo nodo en la red. La Fig. \ref{fig:escenario2_logs5} confirma que el sistema valida estos parámetros al no encontrar conflictos, registrando exitosamente el nuevo dispositivo.
 
 \begin{figure}[H]
     \centering
-    \begin{minipage}{0.48\textwidth}
+    \begin{minipage}{0.32\textwidth}
         \centering
         \includegraphics[width=\linewidth]{img/escenario2_envio5.png}
-        \caption{Fase 5: Nueva MAC y nuevo RSSI.}
+        \caption{Cambios en MAC y RSSI.}
+        \label{fig:escenario2_envio5}
     \end{minipage}\hfill
-    \begin{minipage}{0.48\textwidth}
+    \begin{minipage}{0.66\textwidth}
         \centering
         \includegraphics[width=\linewidth]{img/escenario2_logs5.png}
         \caption{Resultado: Registro exitoso.}
+        \label{fig:escenario2_logs5}
     \end{minipage}
-    \label{fig:fase5}
 \end{figure}
 
 \subsection{Escenario 3: Ataque MitM (Vulnerable)}
