@@ -101,8 +101,10 @@
 
     // Pasos máximos del protocolo por modo
     const PROTOCOL_STEPS = {
-      secure: 6,
-      insecure: 4
+      secure_no_attack: 6,  // Sin MITM activo
+      secure_with_attack: 12,  // Con MITM activo
+      insecure_no_attack: 4,  // Sin MITM activo
+      insecure_with_attack: 10  // Con MITM activo
     };
 
     // Estados de los actores
@@ -360,9 +362,14 @@
 
     /**
      * Obtiene el número máximo de pasos para un modo
+     * Los pasos dependen de si el ataque está activo tanto para modo seguro como inseguro
      */
-    function getMaxSteps(mode) {
-      return isSecureMode(mode) ? PROTOCOL_STEPS.secure : PROTOCOL_STEPS.insecure;
+    function getMaxSteps(mode, mitmActive = false) {
+      if (isSecureMode(mode)) {
+        return mitmActive ? PROTOCOL_STEPS.secure_with_attack : PROTOCOL_STEPS.secure_no_attack;
+      } else {
+        return mitmActive ? PROTOCOL_STEPS.insecure_with_attack : PROTOCOL_STEPS.insecure_no_attack;
+      }
     }
 
     /**
@@ -628,7 +635,7 @@
       onParamChange,
       disabled
     }) {
-      const maxSteps = getMaxSteps(mode);
+      const maxSteps = getMaxSteps(mode, mitmActive);
       
       return (
         <div className="space-y-5 animate-[fadeIn_0.5s]">
@@ -904,7 +911,7 @@
        */
       const handleProtocolStep = async () => {
         const nextStep = protocolStep + 1;
-        const maxSteps = getMaxSteps(mode);
+        const maxSteps = getMaxSteps(mode, mitmActive);
 
         if (protocolStep >= maxSteps) {
           setProtocolStep(0);
