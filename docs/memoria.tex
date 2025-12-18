@@ -1,4 +1,4 @@
-\documentclass[conference,a4paper,onecolumn]{IEEEtran} % Formato oficial de IEEE para conferencias
+\documentclass[conference,a4paper,onecolumn,11pt]{IEEEtran} % Formato oficial de IEEE para conferencias
 
 \usepackage[utf8]{inputenc} % Establece la codificación UTF-8 para el documento
 \usepackage[spanish, es-tabla]{babel} % Traducir etiquetas automáticas
@@ -20,7 +20,15 @@
 \usepackage{todonotes} % Permite insertar notas de tareas pendientes en el documento
 \usepackage{placeins} % Permite usar el comando \FloatBarrier para controlar la posición de figuras y tablas flotantes
 \usepackage{enumitem} % Permite personalizar listas (ítems, enumeraciones)
+\usepackage{algorithm} % Entorno para escribir algoritmos
+\usepackage{algpseudocode} % Entorno para escribir pseudocódigo dentro de algoritmos
 
+% Configuración para que los inputs/outputs de un algoritmo salgan en español
+\renewcommand{\algorithmicrequire}{\textbf{Entrada:}}
+\renewcommand{\algorithmicensure}{\textbf{Salida:}}
+\makeatletter
+\renewcommand{\ALG@name}{Algoritmo}
+\makeatother
 
 % Numeración de secciones personalizada (1.A.1) y de tablas (1,2,3...)
 \renewcommand{\thesection}{\arabic{section}} 
@@ -90,69 +98,72 @@ IoT, Smart Cities, WiFi Direct, D2D, 5G, Ciberseguridad, Protocolo MAKE, SAS, RS
 
 % --- 1. INTRODUCCIÓN ---
 \section{Introducción}
-En la actualidad, se observa una evolución de las ciudades hacia soluciones más tecnológicas e inteligentes. Estas soluciones se usan en diferentes contextos como por ejemplo en el uso de detección de niveles de basura en los contenedores, en la detección de aparcamientos disponibles, etc. Este avance se logra gracias a la integración de sensores electrónicos, móviles y sistemas de información a dispositivos físicos con la finalidad de optimizar las actividades cotidianas. El internet de las cosas (IoT), transforma objetos convencionales en objetos inteligentes, convirtiéndose en el motor de las Smart Cities. Como consecuencia, se espera que para 2025 haya 75 mil millones de dispositivos IoT generando datos masivos.
+En la actualidad, se observa una evolución de las ciudades hacia soluciones más tecnológicas e inteligentes. Estas soluciones se aplican en diferentes contextos como la detección de niveles de basura en los contenedores, la monitorización de plazas de aparcamiento disponibles o la gestión eficiente de infraestructuras urbanas. Este avance se logra gracias a la integración de sensores electrónicos, móviles y sistemas de información a dispositivos físicos con la finalidad de optimizar las actividades cotidianas. 
 
-Para soportar este volumen de datos, se requiere una infraestructura con un gran ancho de banda y una muy baja latencia. Para ello, se hace uso de las redes 5G, ya que cumplen con estas características concretas y además permiten conexiones Device-to-Device (D2D), una tecnología crucial en este contexto. Las conexiones D2D son imprescindibles porque gracias a ellas los dispositivos pueden hablar directamente entre ellos sin la necesidad de pasar a través de una antena central que gestione las comunicaciones. Esto permite descongestionar la red y mejorar la eficiencia de la misma.
+En este escenario, el internet de las cosas (IoT), transforma objetos convencionales en objetos inteligentes, convirtiéndose en el motor de las Smart Cities. Como consecuencia, se prevé que para 2025 haya 75 mil millones de dispositivos IoT generando datos masivos. Para soportar este volumen de datos, se requiere una infraestructura con un gran ancho de banda y una muy baja latencia. Las redes 5G, ya que cumplen con estas características concretas y además permiten conexiones Device-to-Device (D2D), una tecnología crucial en este contexto.
 
-Las comunicaciones D2D en redes 5G son posibles gracias al uso de los servicios móviles y el WiFi Direct. Sin embargo, el uso de los servicios móviles presenta limitaciones debido a la falta de cobertura en áreas urbanas. Por otro lado, el WiFi Direct no tiene este problema, por lo que supone una ventaja significativa. Además, ofrece una transmisión de datos más rápida y menor latencia, siendo la opción más adecuada para implementar en las Smart Cities.
+Las conexiones D2D son imprescindibles porque permiten a los dispositivos comunicarse directamente entre ellos sin la necesidad de pasar a través de una antena central que gestione las comunicaciones. Esto permite descongestionar la red y mejorar la eficiencia de la red. En redes 5G, estas comunicaciones pueden apoyarse tanto en servicios móviles como en Wi-Fi Direct. Sin embargo, el uso de los servicios móviles presenta limitaciones debido a la falta de cobertura en áreas urbanas. Por el otro lado, el WiFi Direct no tiene este problema, por lo que supone una ventaja significativa. Además, ofrece una transmisión de datos más rápida y menor latencia, siendo la opción más adecuada para implementar en las Smart Cities.
 
-No obstante, el uso del WiFi Direct en las conexiones D2D tiene ciertos problemas de seguridad. Estos vienen causados por la conexión directa entre dispositivos, ya que permite a los atacantes interponerse en las comunicaciones, permitiendo la escucha y modificación de mensajes y la suplantación de identidad. Las entidades están expuestas a diferentes ataques (Man-in-the-middle (MITM), DoS, etc.), lo que supone un riesgo importante. Evidentemente, las entidades D2D requieren protección frente a este tipo de amenazas, haciendo necesario un protocolo seguro que evite estos problemas.
+No obstante, el uso del WiFi Direct en conexiones D2D, tienen ciertos problemas de seguridad. Al existir comunicación directa entre dispositivos, los atacantes pueden interferir en las comunicaciones de los dispositivos, permitiendo la escucha y modificación de mensajes y la suplantación de identidad. Las entidades están expuestas a diferentes ataques (Man-in-the-middle (MITM), DoS, etc..) lo que supone un riesgo importante. Evidentemente, las entidades D2D requieren protección frente a este tipo de amenazas, haciendo necesario un protocolo seguro que evite estos problemas.
 
 \subsection{Contribución a la investigación}
-El artículo propone un protocolo de autenticación mutua y de establecimiento de claves seguro para el intercambio de información entre comunicaciones Device-to-Device (D2D) sobre WiFi Direct en entornos IoT de ciudades inteligentes. La contribución de los autores se define en los siguientes cuatro fundamentos:
-
+El articulo propone un protocolo de autenticación mutua y de establecimiento de claves seguro para el intercambio de información en comunicaciones Device-to-Device (D2D) sobre WiFi Direct en entornos IoT de ciudades inteligentes. La contribución de los autores se define en los siguientes cuatro fundamentos:
 \begin{itemize}
-    \item \textbf{Eficiencia y robustez:} El protocolo propuesto debe ser ligero, eficiente y robusto. Esto se consigue a través del uso de métodos primitivos y ligeros de la criptografía como son el protocolo Commit/Open, la criptografía simétrica, el intercambio de claves Diffie-Hellman y códigos de autenticación de mensaje (MAC).
-    \item \textbf{Mitigación Temprana de DoS:} Los dispositivos tienen que poder realizar un filtrado inteligente sobre las diferentes peticiones de conexión para evitar posibles ataques DoS, evitando el malgasto de recursos en la fase de descubrimiento.
+    \item \textbf{Eficiencia y robustez:} El protocolo debe ser ligero, eficiente y robusto. Esto se consigue a través del uso de métodos primitivos y ligeros de la criptografía como son el protocolo Commit/Open, la criptografía simétrica, el intercambio de claves Diffie-Hellman y códigos de autenticación de mensaje (MAC).
     
-    \item \textbf{Validación de Seguridad:} Se debe demostrar que el protocolo funciona mediante el análisis de Lógica BAN (Burrows-Abadi-Needham), asegurando que realmente es seguro. Consiguiendo esto, los autores exhiben la necesidad del uso de propiedades como la frescura del mensaje, la autenticación mutua, etc.
+    \item \textbf{Mitigación temprana de DoS:} Los dispositivos deben poder realizar un filtrado inteligente sobre las diferentes peticiones de conexión para evitar posibles ataques DoS, evitando el malgasto de recursos en la fase de descubrimiento.
+
+    \item \textbf{Validación de seguridad:} El protocolo debe demostrarse que funciona mediante el análisis de Lógica BAN (Burrows-Abadi-Needham), asegurando que realmente es seguro. Consiguiendo esto los autores exhiben la necesidad del uso de propiedades como la frescura del mensaje, la autenticación mutua, etc.
     
-    \item \textbf{Integridad y Verificación de Claves:} El protocolo tiene que ser seguro ante ataques Man-in-the-middle, DoS, ataques basados en la repetición de mensajes, etc. Además, debe verificar también que la clave intercambiada por los dispositivos sea idéntica para que no haya errores en cifrado y descifrado de mensajes.
+    \item \textbf{Integridad y verificación de claves:} Debe resistir ataques MITM, DoS y de repetición, y asegurar que ambas partes verifican que la clave acordada es la misma para evitar errores de cifrado/descifrado.
 \end{itemize}
 
 % --- 2. CONTEXTO ---
 \section{Contexto}
 
 \subsection{WiFi-Direct}
-El WiFi Direct es un protocolo de conexión de dispositivos, el cual permite a dos entidades conectarse sin la necesidad de un router externo que gestione las comunicaciones. Esto permite una mayor transmisión de datos y una menor latencia, mejorando la eficiencia. El funcionamiento se basa en las siguientes 4 fases:
-
+El WiFi Direct es un protocolo de conexión de dispositivos, el cual permite a dos entidades conectarse sin la necesidad de un router externo. Esto permite una mayor transmisión de datos y una menor latencia, mejorando la eficiencia. Su funcionamiento se basa en las siguientes 4 fases:
 \begin{enumerate}
-    \item \textbf{Fase de descubrimiento:} Es la fase inicial donde los dispositivos se buscan entre ellos para realizar las conexiones peer-to-peer (P2P). La búsqueda se hace sin la necesidad de un router.
-    \item \textbf{Negociación de grupo:} En esta fase se decide quién va a ser el Group Owner (GO). Este proceso se llama \textit{handshake}, donde cada participante envía un “valor de intención”. El dispositivo con el valor más alto se convierte en GO.
-    \item \textbf{Proceso WPS:} Se inicia el proceso de seguridad utilizando el protocolo WiFi Protected Setup (WPS). Durante esta fase se lleva a cabo el acuerdo de claves y la autenticación mutua. El GO actúa como registrador para enviar las credenciales.
-    \item \textbf{Configuración de Dirección:} Tras la autenticación, el GO utiliza DHCP para generar las direcciones IP para ambos dispositivos, estableciendo la conexión D2D.
+    \item \textbf{Fase de descubrimiento:} Es la fase inicial donde los dispositivos se detectan entre ellos para realizar las conexiones peer-to-peer(P2P). La búsqueda entre dispositivos se hace sin la necesidad de un router por el cual hacer las conexiones. 
+    \item \textbf{Negociación de grupo:} Los dispositivos determinan quien actuará como Group Owner(GO), el cual es el que controla las comunicaciones del grupo. Este proceso se elige al GO, mediante un  handshake, donde cada participante del grupo P2P envía un “valor de intención”. El dispositivo que posea el valor intención más alto es quien se convierte en GO del grupo P2P.
+    \item \textbf{Proceso WPS:} Se ejecuta el mecanismo de seguridad mediante WiFi Protected Setup (WPS), donde se lleva a cabo el acuerdo de claves y la autenticación mutua. Dentro del proceso de seguridad tradicional de WPS, el GO actúa como registrador para enviar las credenciales de seguridad de la red a las entidades del WiFi Direct. Tras esta fase, la protección del tráfico suele apoyarse en WPA (Wi-Fi Protected Access).
+    \item \textbf{Configuración de dirección:} Finalmente una vez autenticados, el GO asigna direcciones IP (típicamente vía DHCP) y se establece el canal D2D operativo.
 \end{enumerate}
 
 \subsection{Protocolo de clave SAS}
-El protocolo Short Authentication String (SAS) es un acuerdo de clave diseñado para la autenticación mutua y el establecimiento de claves en D2D. Se basa en el método Diffie-Hellman y utiliza un sistema basado en un esquema de compromiso (\textit{commitment scheme}). El proceso, ejemplificado con Alicia (A) y Bob (B), incluye:
+El protocolo Short Authentication String (SAS) es un acuerdo de clave diseñado para la autenticación mutua y el establecimiento de claves en las comunicaciones Device-to-Device (D2D). Se apoya en  Diffie-Hellman como mecanismo fundamental para establecer una clave secreta. 
+
+Además, utiliza un sistema de intercambio de claves basado en un esquema de compromiso (commitment scheme). El proceso de funcionamiento, basando la comunicación entre Alicia y Bob (Dispositivos A y B), incluye los siguientes pasos clave:
 
 \begin{enumerate}
-    \item \textbf{Generación de parámetros secretos:} A y B generan sus identificadores ($ID_x$), parámetros Diffie Hellman ($g^x$) y \textit{nonces} ($N_x$). Calculan su valor secreto concatenando:
+    \item \textbf{Generación de parámetros secretos:} Los dispositivos A y B generan sus identificadores ($ID_x$), parámetros Diffie Hellman ($g^x$) y números aleatorios: \textit{nonces} ($N_x$). Con ello construyen sus valores secretos ($m_x$) concatenando su identificador, el parámetro Diffie-Hellman y el nonce:
     \begin{equation}
         m_x = ID_x \parallel g^x \parallel N_x
     \end{equation}
-    \item \textbf{Creación del Commit/Open Pair:} El dispositivo transforma el secreto $m_x$ en un par $(c, d)$, donde $c$ es el compromiso y $d$ la apertura.
+    \item \textbf{Creación del Commit/Open Pair:} El dispositivo transforma el secreto $m_x$ en un par $(c, d)$, donde $c$ es el valor de compromiso y $d$ el valor de apertura.
     \item \textbf{Intercambio de Mensajes:}
     \begin{itemize}
-        \item Alice comparte su compromiso ($c$).
-        \item Bob responde con su valor secreto ($m_B$).
-        \item Alice envía su valor de apertura ($d$), permitiendo a Bob extraer $m_A$.
+        \item Inicialmente, Alice comparte su compromiso ($c$) con Bob.
+        \item Como respuesta, Bob intercambia su valor secreto ($m_B$) con Alice.
+        \item Alice, tras recibir el secreto de Bob ($m_B$), envía su valor de apertura ($d$) permitiendo a Bob extraer el valor secreto de Alice ($m_A$).
     \end{itemize}
-    \item \textbf{Cálculo y Verificación (SAS):} Ambos verifican la identidad calculando la Short Authentication String aplicando XOR a $N_A$ y $N_B$, obteniendo $S_A$ y $S_B$. Si $S_A \neq S_B$, se asume un ataque MITM.
-    \item \textbf{Establecimiento de la clave:} Si la verificación es exitosa:
+    \item \textbf{Cálculo y verificación (SAS):} Tras obtener ambos dispositivos los secretos ($m_A, m_B$), ambos verifican la identidad mutua calculando la Short Authentication String (SAS), aplicando XOR a $N_A$ y $N_B$. Estas dos cadenas son enviadas a través de un canal confiable para ser comparadas. Si las cadenas de autenticación no coinciden ($S_A \neq S_B$), el proceso de establecimiento de claves se termina, asumiendo que existe un ataque Man-in-the-Middle (MITM).
+    \item \textbf{Establecimiento de la clave:} Si la verificación es exitosa, ambos dispositivos calculan la clave secreta:
     \begin{equation}
         K = g^{ab} \pmod p
     \end{equation}
 \end{enumerate}
 
-Una debilidad del SAS es compartir las cadenas de autenticación ($S_A, S_B$) en texto simple, permitiendo ataques MITM mediante escucha (\textit{eavesdropping}).
+A pesar de que el protocolo intenta prevenir el ataque MITM, este presenta una debilidad al compartir las cadenas de autenticación corta (SA, SB), ya que se comparte en texto simple a través de un canal inálambrico vulnerable, permitiendo así el ataque MITM mediante la escucha  (\textit{eavesdropping}).
 
 \subsection{Limitaciones WPS}
-WPS ofrece protección mediante dos métodos que presentan limitaciones críticas:
+El protocolo WiFi Protected Setup (WPS) es un mecanismo de seguridad utilizado por WiFi Direct para proteger las comunicaciones D2D (Device-to-Device). Este permite que el Group Owner (GO) registre las comunicaciones, para enviar las credenciales de seguridad a los clientes. Además, ofrece protección mediante dos métodos principales: el PIN y el botón de configuración (Push Button). Ambos presentan limitaciones que comprometen la robustez del protocolo:
 \begin{enumerate}
-    \item \textbf{Vulnerabilidad del PIN:} Puede ser descubierto mediante fuerza bruta en poco tiempo.
-    \item \textbf{Vulnerabilidad del Push Button:} Si un atacante activa su botón simultáneamente al usuario, podría obtener acceso no autorizado.
+    \item \textbf{Vulnerabilidad del PIN:} Se centra en un fallo del PIN de configuración, ya que este puede ser descubierto fácilmente mediante un ataque de fuerza bruta en una pequeña fracción de tiempo. 
+    \item \textbf{Vulnerabilidad del botón de configuración (Push Button):} En un escenario donde un atacante active su botón al mismo tiempo que el usuario, podría obtener acceso no autorizado al GO o al cliente.
 \end{enumerate}
+
+Estas dos vulnerabilidades comprometen la seguridad de las comunicaciones D2D, provocando accesos y revelación de secretos en las comunicaciones.
 
 % --- 3. OBJETIVOS DE SEGURIDAD ---
 \section{Objetivos de seguridad}
@@ -204,10 +215,10 @@ Para el análisis formal de seguridad, asumimos un adversario activo bajo el mod
 \end{itemize}
 
 % --- 4. PROTOCOLO PROPUESTO ---
-\section{Protocolo Propuesto}
+\section{Protocolo propuesto}
 Las fases más propensas a ataques son Descubrimiento y Autenticación. El protocolo propone soluciones específicas para ellas.
 
-\subsection{Fase de Descubrimiento}
+\subsection{Fase de descubrimiento}
 Los dispositivos Wifi Direct deben escuchar \textit{probe requests}. Esto permite ataques DoS mediante solicitudes falsas masivas. Se plantea un mecanismo de filtrado.
 
 \subsubsection{Suposiciones}
@@ -221,15 +232,30 @@ Los dispositivos Wifi Direct deben escuchar \textit{probe requests}. Esto permit
 \subsubsection{Algoritmo}
 El algoritmo asegura que no se procesen solicitudes de dispositivos con la misma MAC y mismo RSSI, o distinta MAC y mismo RSSI (spoofing).
 
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=0.8\columnwidth]{img/algoritmo1.png} 
-    \fbox{\parbox{0.8\columnwidth}{\centering \vspace{2cm} [Insertar Figura 1: Algoritmo de Filtrado] \vspace{2cm}}}
-    \caption{Algoritmo de filtrado en fase de descubrimiento.}
-    \label{fig:algoritmo_descubrimiento}
-\end{figure}
-
-
+\begin{algorithm}
+\caption{Filtrado de solicitudes maliciosas en la fase de descubrimiento}
+\begin{algorithmic}[1]
+    \Require Dirección MAC, RSSI
+    \Ensure Recursos, DoS
+    \Statex \textbf{Abreviaturas:} new probe request (NPR), compares with database (CWD)    
+    \State $D_1$ envía\_solicitud $D_2$ \Comment{$D_1$ envía solicitud de sondeo a $D_2$}
+    \State $D_2$ recibe\_solicitud $D_1$ \Comment{$D_2$ almacena $MAC^1$, $RSSI^1$}
+    
+    \If{$MAC^2 == MAC^1$} \Comment{$MAC^2, RSSI^2 \in$ NPR}
+        \If{$RSSI^2 == RSSI^1$} \Comment{$D_2$ realiza CWD}
+            \State DoS() \Comment{Denegación de servicio}
+        \EndIf
+    \Else
+        \If{$MAC^2 != MAC^1$}
+            \If{$RSSI^2 != RSSI^1$}
+                \State proveer\_servicio() \Comment{Recursos concedidos}
+            \EndIf
+        \Else
+            \State DoS \Comment{Denegación de servicio}
+        \EndIf
+    \EndIf
+\end{algorithmic}
+\end{algorithm}
 
 \subsection{Fase de Autenticación Mutua y Acuerdo de Clave}
 El protocolo emplea el esquema \textbf{MAKE} (Mutual Authentication and Key Agreement) para prevenir MITM, mejorando SAS con:
@@ -249,15 +275,176 @@ El protocolo emplea el esquema \textbf{MAKE} (Mutual Authentication and Key Agre
     \item Confirmación mediante MAC (Message Authentication Code) incluyendo TS y LT.
 \end{enumerate}
 
-\begin{figure}[htbp]
+\begin{algorithm}
+\caption{MAKE - Mutual Authentication and Secret Key Establishment}\begin{algorithmic}[1]
+    \Require IDs de dispositivos capturadas en fase de descubrimiento: $ID_A, ID_B$; Claves públicas: g, p; Cada dispositivo elige un valor secreto (s) y calcula $g^s \pmod p \{g^a \pmod p, g^b \pmod p\}$; Cálculo de Nonce $N_A$ y $N_B$ en disp. A y B respectivamente; Message Authentication Code (MAC); Timestamp (TS); Lifetime (LT)
+    \Ensure MAKE Exitoso, MAKE Fallido
+    
+    \State $D_B \leftarrow c$ \Comment{Disp. A envía valor de compromiso al Disp. B}
+    \State $D_A \leftarrow m_B$ \Comment{Disp. B envía $m_B$ al Disp. A}
+    \State $D_B \leftarrow d$ \Comment{Disp. A envía valor de apertura al Disp. B}
+    \State $S_A = N_A \oplus N'_B$ \Comment{Disp. A calcula cadena de autenticación}
+    \State $S_B = N'_A \oplus N_B$ \Comment{Disp. B calcula cadena de autenticación}
+    \State $K_{AB} = (g^b)^a \pmod p$ \Comment{Disp. A calcula clave secreta}
+    \State $K_{BA} = (g^a)^b \pmod p$ \Comment{Disp. B calcula clave secreta}
+    \State $D_B \leftarrow Auth_A = TS || LT || MAC_A(K_{AB}, S_A || TS || LT)$
+    \State $D_A \leftarrow Auth_B = MAC_B(K_{BA}, S_B || TS || LT)$
+    \If{$MAC_A == MAC_B$} \Comment{$D_A$ y $D_B$ verifican}
+        \State MAKE Exitoso
+    \Else
+        \State MAKE Fallido
+    \EndIf
+\end{algorithmic}
+\end{algorithm}
+
+% --- 5. IMPLEMENTACIÓN Y DEMOSTRACIÓN ---
+\section{Implementación y Demostración}
+
+Para validar la viabilidad práctica de los protocolos teóricos presentados, se ha desarrollado un simulador interactivo basado en Python (FastAPI) y una interfaz web reactiva. Este entorno permite reproducir ataques reales y visualizar la eficacia de las contramedidas en tiempo real. Se adjunta al proyecto una \textit{Guía de Usuario} detallada para la ejecución del software.
+
+A continuación, se documentan los resultados obtenidos en los cuatro escenarios de prueba disponibles en la herramienta.
+
+\subsection{Escenario 1: Ataque DoS (Vulnerable)}
+En este modo, se simula un dispositivo IoT receptor (Cámara) sin mecanismos de filtrado previo. El objetivo es demostrar la fragilidad de los dispositivos con recursos limitados ante solicitudes masivas.
+
+El proceso se inicia cuando el atacante (Hugo) lanza un ataque de inundación (\textit{flooding}). Como se observa en la Fig. \ref{fig:dos_flood}, el adversario envía una ráfaga continua de paquetes de solicitud (REQ) hacia el dispositivo víctima, saturando el canal de comunicación.
+
+\begin{figure}[H]
     \centering
-    \includegraphics[width=0.8\columnwidth]{img/algoritmo2.png}
-    \fbox{\parbox{0.8\columnwidth}{\centering \vspace{2cm} [Insertar Figura 2: Diagrama de flujo MAKE] \vspace{2cm}}}
-    \caption{Diagrama del protocolo de autenticación MAKE.}
-    \label{fig:protocolo_make}
+    \includegraphics[width=0.8\textwidth]{img/escenario1_flooding.png} 
+    \caption{Inicio del ataque: El adversario inyecta múltiples solicitudes de conexión simultáneas hacia la víctima.}
+    \label{fig:dos_flood}
 \end{figure}
 
-% --- 5. ANÁLISIS ---
+Al carecer de un algoritmo de validación en la fase de descubrimiento, la víctima intenta procesar cada una de estas solicitudes como si fueran legítimas. La Fig. \ref{fig:dos_logs} muestra los registros internos del sistema durante el ataque: inicialmente se aceptan los paquetes, pero la carga computacional escala rápidamente hasta agotar la capacidad de procesamiento, momento en el que se disparan las alertas de ``FALLO DEL SISTEMA''.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.7\textwidth]{img/escenario1_logs.png}
+    \caption{Logs del sistema: La aceptación de todos paquetes lleva a la CPU a 0, provocando el fallo crítico.}
+    \label{fig:dos_logs}
+\end{figure}
+
+La consecuencia final se ilustra en la Fig. \ref{fig:dos_colapso}. Una vez que la CPU alcanza el colapso total (0\%), el dispositivo queda inoperativo (representado por el icono de la cámara dañada), denegando el servicio a cualquier usuario legítimo que intente conectarse posteriormente.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{img/escenario1_colapso.png}
+    \caption{Colapso del nodo: El dispositivo víctima queda fuera de servicio tras el agotamiento de recursos.}
+    \label{fig:dos_colapso}
+\end{figure}
+
+\subsection{Escenario 2: Protección DoS (Propuesta)}
+Para validar la robustez del algoritmo de filtrado contextual, se ha diseñado una prueba secuencial de cinco fases que evalúa la capacidad del sistema para distinguir entre usuarios legítimos y atacantes basándose en la identidad (MAC) y el contexto físico (RSSI).
+
+En primer lugar, el dispositivo legítimo (Semáforo) solicita acceso con sus credenciales reales (MAC terminada en \texttt{:66}) y una potencia de señal de -45 dBm. La Fig. \ref{fig:fase1} muestra cómo el sistema verifica la solicitud y concede el acceso ("ACCESO CONCEDIDO"), estableciendo una sesión activa.
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{img/escenario2_envio1.png}
+        \caption{Fase 1: Solicitud legítima del Semáforo.}
+    \end{minipage}\hfill
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{img/escenario2_logs1.png}
+        \caption{Resultado: Dispositivo verificado.}
+    \end{minipage}
+    \label{fig:fase1}
+\end{figure}
+
+El atacante (Hugo el Hacker) intenta suplantar al semáforo copiando exactamente sus parámetros: misma dirección MAC y mismo RSSI (-45 dBm). Como se observa en la Fig. \ref{fig:fase2}, el protocolo detecta que esa MAC ya tiene una sesión activa registrada y bloquea inmediatamente el intento, protegiendo la integridad de la sesión en curso.
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{img/escenario2_envio2.png}
+        \caption{Fase 2: Intento con misma MAC y RSSI.}
+    \end{minipage}\hfill
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{img/escenario2_logs2.png}
+        \caption{Resultado: Bloqueo por sesión activa.}
+    \end{minipage}
+    \label{fig:fase2}
+\end{figure}
+
+El atacante modifica su estrategia: mantiene la MAC suplantada pero altera la potencia de emisión a -67 dBm, intentando simular un cambio de posición o fluctuación. La Fig. \ref{fig:fase3} evidencia que el sistema no se deja engañar; al persistir el uso de una MAC ya registrada en el sistema, la solicitud sigue siendo rechazada ("BLOQUEADO") independientemente del cambio en la señal.
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{img/escenario2_envio3.png}
+        \caption{Fase 3: Misma MAC con RSSI modificado.}
+    \end{minipage}\hfill
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{img/escenario2_logs3.png}
+        \caption{Resultado: Persistencia del bloqueo.}
+    \end{minipage}
+    \label{fig:fase3}
+\end{figure}
+
+En esta fase, el atacante cambia su identidad (MAC nueva terminada en \texttt{:FF}) pero vuelve a emitir con la potencia original del semáforo (-45 dBm). El algoritmo de filtrado contextual identifica una anomalía física: es improbable que dos dispositivos distintos ocupen exactamente el mismo espacio radioeléctrico (mismo RSSI exacto). Por tanto, como muestra la Fig. \ref{fig:fase4}, se bloquea la solicitud por "Distinta MAC en misma ubicación".
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{img/escenario2_envio4.png}
+        \caption{Fase 4: Nueva MAC con RSSI sospechoso.}
+    \end{minipage}\hfill
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{img/escenario2_logs4.png}
+        \caption{Resultado: Bloqueo por anomalía física.}
+    \end{minipage}
+    \label{fig:fase4}
+\end{figure}
+
+Finalmente, se simula una conexión válida donde cambian tanto la identidad como el contexto. El dispositivo presenta una MAC nueva y un RSSI diferente (-19 dBm), lo cual es coherente con un nuevo nodo en la red. La Fig. \ref{fig:fase5} confirma que el sistema valida estos parámetros al no encontrar conflictos, registrando exitosamente el "NUEVO DISPOSITIVO".
+
+\begin{figure}[H]
+    \centering
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{img/escenario2_envio5.png}
+        \caption{Fase 5: Nueva MAC y nuevo RSSI.}
+    \end{minipage}\hfill
+    \begin{minipage}{0.48\textwidth}
+        \centering
+        \includegraphics[width=\linewidth]{img/escenario2_logs5.png}
+        \caption{Resultado: Registro exitoso.}
+    \end{minipage}
+    \label{fig:fase5}
+\end{figure}
+
+\subsection{Escenario 3: Ataque MitM (Vulnerable)}
+Este modo reproduce el funcionamiento del protocolo estándar SAS, donde los parámetros de intercambio de claves se envían en texto claro.
+
+La Fig. \ref{fig:mitm_vuln} evidencia la vulnerabilidad crítica: el atacante (``Hugo'') logra interceptar el intercambio inicial entre Alice y Bob, inyectando sus propios parámetros. Esto resulta en el establecimiento de dos claves de sesión independientes ($K_{AE}$ y $K_{BE}$), permitiendo al atacante espiar y manipular el tráfico sin ser detectado.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{img/algoritmo1.png} 
+    \caption{Escenario 3: Ataque Man-in-the-Middle exitoso interceptando el intercambio SAS estándar.}
+    \label{fig:mitm_vuln}
+\end{figure}
+
+\subsection{Escenario 4: Protección MitM (Protocolo MAKE)}
+Finalmente, se valida la implementación del protocolo MAKE propuesto. Este añade un esquema de compromiso (\textit{Commit/Open}) y verificación temporal.
+
+En la Fig. \ref{fig:mitm_prot} se muestra cómo el intento de manipulación es neutralizado. El atacante, al no conocer el secreto comprometido en la fase inicial, falla al intentar generar una apertura válida. El protocolo detecta la inconsistencia matemática en el tercer paso y aborta la conexión preventivamente, garantizando la integridad del canal.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{img/algoritmo1.png} 
+    \caption{Escenario 4: El protocolo MAKE detecta la manipulación en la fase de apertura y aborta la conexión.}
+    \label{fig:mitm_prot}
+\end{figure}
+
+% --- 6. ANÁLISIS ---
 \section{Análisis}
 En esta sección se evalúa formalmente la robustez y eficiencia del protocolo propuesto, contrastando sus mecanismos de defensa con las vulnerabilidades inherentes al estándar WiFi Direct actual.
 
@@ -275,32 +462,32 @@ La seguridad del protocolo se fundamenta en la imposibilidad matemática de alte
 \begin{itemize}
     \item \textbf{Protocolo estándar (Vulnerabilidad SAS):} Los protocolos basados en \textit{Short Authentication String} (SAS) tradicionales envían los compromisos o las cadenas de autenticación en claro o sin vinculación temporal fuerte. Un atacante con control del canal puede interceptar el intercambio y modificar los parámetros Diffie-Hellman al vuelo, estableciendo claves de sesión fraudulentas sin que las partes legítimas perciban la intrusión.
     
-    \item \textbf{Protocolo propuesto (Integridad Criptográfica):} El uso del esquema \textit{Commit/Open} obliga al iniciador a "comprometerse" con un valor oculto (hash) antes de revelar la clave pública. Esto elimina la ventana de oportunidad para ataques adaptativos. Además, la inclusión de marcas de tiempo (\textit{Timestamp}) y tiempo de vida (\textit{Lifetime}) en la firma MAC garantiza la frescura del mensaje, neutralizando teóricamente los ataques de repetición.
+    \item \textbf{Protocolo propuesto (Integridad criptográfica):} El uso del esquema \textit{Commit/Open} obliga al iniciador a "comprometerse" con un valor oculto (hash) antes de revelar la clave pública. Esto elimina la ventana de oportunidad para ataques adaptativos. Además, la inclusión de marcas de tiempo (\textit{Timestamp}) y tiempo de vida (\textit{Lifetime}) en la firma MAC garantiza la frescura del mensaje, neutralizando teóricamente los ataques de repetición.
 \end{itemize}
 
-\subsection{Comparativa Arquitectónica}
+\subsection{Comparativa arquitectónica}
 La Tabla \ref{tab:comparativa} resume las diferencias estructurales y sus implicaciones directas en la seguridad del sistema.
 
 \begin{table*}[htbp]
     \centering
-    \caption{Comparativa Teórica: Estándar vs. Propuesta}
+    \caption{Comparativa: Estándar vs. Propuesta}
     \label{tab:comparativa}
     \begin{tabular}{lcc}
         \hline
-        \textbf{Propiedad} & \textbf{Estándar WiFi Direct} & \textbf{Protocolo Propuesto} \\
+        \textbf{Propiedad} & \textbf{Estándar WiFi Direct} & \textbf{Protocolo propuesto} \\
         \hline
-        Gestión de Solicitudes & Procesamiento indiscriminado de cualquier petición. & Filtrado inteligente basado en el contexto. \\
+        Gestión de solicitudes & Procesamiento indiscriminado de cualquier petición. & Filtrado inteligente basado en el contexto. \\
         \hline
         Impacto DoS & Agotamiento de recursos (CPU y Batería). El sistema falla. & Rechazo inmediato. El sistema se mantiene estable. \\
         \hline
-        Intercambio de Claves & Vulnerable a ataques de intermediario (MITM). & Seguro gracias a la vinculación fuerte (Commit/Open). \\
+        Intercambio de claves & Vulnerable a ataques de intermediario (MITM). & Seguro gracias a la vinculación fuerte (Commit/Open). \\
         \hline
         Integridad & Verificación visual (el usuario compara códigos). & Verificación matemática automática. \\
         \hline
     \end{tabular}
 \end{table*}
 
-% --- 6. CONCLUSIONES ---
+% --- 7. CONCLUSIONES ---
 \section{Conclusiones}
 
 El crecimiento exponencial de las Smart Cities plantea desafíos críticos de seguridad que no pueden ser resueltos mediante la infraestructura tradicional. Este trabajo ha demostrado que es posible asegurar las comunicaciones Device-to-Device (D2D) sobre WiFi Direct sin comprometer el rendimiento de dispositivos IoT con recursos limitados.
