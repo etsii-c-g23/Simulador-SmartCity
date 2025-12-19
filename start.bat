@@ -10,7 +10,7 @@ start http://127.0.0.1:8000
 
 :: 2. Inicia el servidor
 echo Iniciando Backend Python...
-python -m uvicorn backend:app --reload
+uvicorn backend:app --reload
 
 :: Esto mantiene la ventana abierta si hay un error
 pause
