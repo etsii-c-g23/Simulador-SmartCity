@@ -127,7 +127,7 @@ El articulo propone un protocolo de autenticación mutua y de establecimiento de
 \subsection{WiFi-Direct}
 El WiFi Direct es un protocolo de conexión de dispositivos, el cual permite a dos entidades conectarse sin la necesidad de un router externo. Esto permite una mayor transmisión de datos y una menor latencia, mejorando la eficiencia. Su funcionamiento se basa en las siguientes 4 fases (Fig. \ref{fig:diagrama_fases}):\cite{shen2016secure}
 \begin{enumerate}
-    \item \textbf{Fase de descubrimiento:} Es la fase inicial donde los dispositivos se detectan entre ellos para realizar las conexiones peer-to-peer(P2P). La búsqueda entre dispositivos se hace sin la necesidad de un router por el cual hacer las conexiones. 
+    \item \textbf{Fase de descubrimiento:} Es la fase inicial donde los dispositivos se detectan entre ellos para realizar las conexiones peer-to-peer (P2P). La búsqueda entre dispositivos se hace sin la necesidad de un router por el cual hacer las conexiones. 
     \item \textbf{Negociación de grupo:} Los dispositivos determinan quien actuará como Group Owner(GO), el cual es el que controla las comunicaciones del grupo. Este proceso se elige al GO, mediante un  handshake, donde cada participante del grupo P2P envía un “valor de intención”. El dispositivo que posea el valor intención más alto es quien se convierte en GO del grupo P2P.
     \item \textbf{Proceso WPS:} Se ejecuta el mecanismo de seguridad mediante WiFi Protected Setup (WPS), donde se lleva a cabo el acuerdo de claves y la autenticación mutua. Dentro del proceso de seguridad tradicional de WPS, el GO actúa como registrador para enviar las credenciales de seguridad de la red a las entidades del WiFi Direct. Tras esta fase, la protección del tráfico suele apoyarse en WPA (Wi-Fi Protected Access).
     \item \textbf{Configuración de dirección:} Finalmente una vez autenticados, el GO asigna direcciones IP (típicamente vía DHCP) y se establece el canal D2D operativo.
@@ -262,7 +262,7 @@ El diseño de un protocolo criptográfico para infraestructuras críticas en Sma
 Para satisfacer los objetivos anteriores, el protocolo debe cumplir con los siguientes requisitos criptográficos específicos:
 
 \begin{itemize}
-    \item \textbf{Autenticación Mutua en D2D:} 
+    \item \textbf{Autenticación mutua en D2D:} 
     A diferencia de las redes centralizadas con una autoridad confiable, en WiFi Direct el canal es abierto. Es imperativo que tanto el emisor como el receptor verifiquen la identidad el uno del otro antes de intercambiar información sensible, evitando conexiones con nodos suplantadores.
 
     \item \textbf{Confidencialidad y acuerdo de claves:} 
@@ -296,7 +296,7 @@ Para el análisis formal de seguridad, asumimos un adversario activo bajo el mod
 
 % --- 4. PROTOCOLO PROPUESTO ---
 \section{Protocolo propuesto}
-Las fases más propensas a ataques son Descubrimiento y Autenticación, como se muestra en la Fig. \ref{fig:diagrama_fases_redux}. El protocolo propone soluciones específicas para ellas.
+Las fases más propensas a ataques son Descubrimiento y Autenticación, como se muestra en la Fig. \ref{fig:diagrama_fases_redux}. Por lo tanto, el protocolo descrito en el artículo propone una serie de soluciones a los problemas conocidos en estas fases vulnerables.
 
 \begin{figure*}[htbp]
 \centering
@@ -386,20 +386,25 @@ Las fases más propensas a ataques son Descubrimiento y Autenticación, como se 
 \end{figure*}
 
 \subsection{Fase de descubrimiento}
-Los dispositivos Wifi Direct deben escuchar \textit{probe requests}. Esto permite ataques DoS mediante solicitudes falsas masivas. Se plantea un mecanismo de filtrado.
+Los dispositivos que utilizan Wifi Direct necesitan enviar una solicitud \textit{probe request} para conectarse con otro dispositivo, por lo que los dispositivos que utilizan Wifi Direct deben permanecer escuchando (es decir, a la espera de una \textit{probe request}) para responder con una \textit{probe response} esa solicitud de conexión.
+Esta característica puede explotarse de forma maliciosa, ya que es posible crear \textit{probe requests} falsas con la única finalidad de impedir el correcto funcionamiento del dispositivo objetivo. Esto se conoce como un ataque de Denegación de Servicio (DoS).
+El protocolo propuesto expone algunas medidas para hacer frente a esta vulnerabilidad. En concreto, se plantea un mecanismo de filtrado en la fase de descubrimiento mediante el uso de un algoritmo.
 
 \subsubsection{Suposiciones}
+Antes de introducir el algoritmo, se realizan una serie de asunciones para acotar el problema:
 \begin{itemize}
-    \item La dirección MAC es única.
-    \item Se utiliza el RSSI (\textit{Received Signal Strength Indicator}) para estimar localización.
-    \item Dispositivos distribuidos y estacionarios.
-    \item Factores que afectan al RSSI se consideran constantes.
+    \item La dirección MAC (o dirección física de un dispositivo) es única, por lo que no puede haber dos dispositivos legítimos con la misma dirección MAC.
+    \item Los dispositivos emiten señales con una intensidad que puede ser medida por el receptor en forma de RSSI (Received Signal Strength Indicator), el cual sirve para estimar la localización del dispositivo que emite la señal.
+    \item Los dispositivos han sido instalados de forma distribuida y estacionaria (ningún dispositivo se mueve según esta suposición).
+    \item La dirección MAC y el RSSI sirven para distinguir a un dispositivo de otro.
+    \item Los dispositivos tienen capacidad de almacenamiento para guardar las direcciones MAC y los valores RSSI de los dispositivos que han solicitado conexión previamente.
+    \item Los factores que podrían afectar al RSSI se consideran constantes.
 \end{itemize}
 
 \subsubsection{Algoritmo}
-El algoritmo asegura que no se procesen solicitudes de dispositivos con la misma MAC y mismo RSSI, o distinta MAC y mismo RSSI (spoofing).
+El algoritmo (Fig. \ref{fig_algoritmo1}) asegura que no se procesen solicitudes de dispositivos con la misma MAC y mismo RSSI, o distinta MAC y mismo RSSI.
 
-\begin{algorithm}
+\begin{algorithm}[H]
 \caption{Filtrado de solicitudes maliciosas en la fase de descubrimiento}
 \begin{algorithmic}[1]
     \Require Dirección MAC, RSSI
@@ -421,26 +426,19 @@ El algoritmo asegura que no se procesen solicitudes de dispositivos con la misma
             \State DoS \Comment{Denegación de servicio}
         \EndIf
     \EndIf
+    \label{fig_algoritmo1}
 \end{algorithmic}
 \end{algorithm}
 
 \subsection{Fase de Autenticación Mutua y Acuerdo de Clave}
-El protocolo emplea el esquema \textbf{MAKE} (Mutual Authentication and Key Agreement) para prevenir MITM, mejorando SAS con:
+Wifi Direct emplea un mecanismo de intercambio de claves que permite que un posible adversario o \textit{hacker} pueda interponerse en este intercambio y modificar los siguientes mensajes enviados entre los dispositivos. Esto se conoce como un ataque \textit{Man in the Middle (MITM)}.
+El protocolo propuesto emplea un esquema llamado MAKE (Mutual Authentication and Key Agreement) para prevenir el ataque \textit{MITM}, el cual pretende mejorar el acuerdo de clave SAS arreglando sus puntos débiles(Fig. \ref{fig_algoritmo2}).
+Con este fin, se realizan las siguientes mejoras:
 \begin{itemize}
-    \item Valores Timestamp (TS) y Lifetime (LT).
-    \item SAS no se envía en texto plano.
-    \item Verificación de generación de claves.
+    \item Se añaden los valores Timestamp (TS) y Lifetime (LT).
+    \item El intercambio de Short Authentication Strings (SAS) no se realiza en texto plano.
+    \item Verificación de la generación de claves en ambos dispositivos.
 \end{itemize}
-
-\textbf{Proceso de conexión (A con B):}
-\begin{enumerate}
-    \item Conocimiento inicial: IDs propios y ajenos, parámetros Diffie-Hellman.
-    \item Generación de valores: aleatorios ($x$), $g^x$, nonce ($N$) y $TS/LT$.
-    \item A genera par commit-open ($c, d$) y envía $c$ a B.
-    \item Intercambio de claves públicas y apertura del compromiso.
-    \item Cálculo de SAS y Claves Secretas ($K = g^{ab}$).
-    \item Confirmación mediante MAC (Message Authentication Code) incluyendo TS y LT.
-\end{enumerate}
 
 \begin{algorithm}
 \caption{MAKE - Mutual Authentication and Secret Key Establishment}\begin{algorithmic}[1]
@@ -461,8 +459,52 @@ El protocolo emplea el esquema \textbf{MAKE} (Mutual Authentication and Key Agre
     \Else
         \State MAKE Fallido
     \EndIf
+    \label{fig_algoritmo2}
 \end{algorithmic}
 \end{algorithm}
+
+En el caso en el que A se quiere conectar con B sucede lo siguiente:
+
+\begin{enumerate}
+    \item Los dispositivos conocen:
+    \begin{itemize}
+        \item Su propio ID ($ID_A, ID_B$)
+        \item El ID del otro dispositivo
+        \item Los parámetros $g$ y $p$ del intercambio de claves Diffie-Hellman
+    \end{itemize}
+
+    \item Cada dispositivo genera:
+    \begin{itemize}
+        \item $a$ o $b$: valor aleatorio (lo llamaremos $x$ de forma genérica)
+        \item $g^x \pmod p$
+        \item $N_x$: valor ``nonce'' entre 0 y 1
+        \item $m_x = ID_x \parallel g^x \parallel N_x$
+    \end{itemize}
+
+    \item A genera un par ``commit-open'' $(c, d)$ a partir de $m_A$
+
+    \item A envía $c$ a B
+
+    \item B envía $m_B$ a A
+
+    \item A envía $d$ a B
+
+    \item Se calculan los String de autenticación (SAS) y las claves secretas de Diffie-Hellman:
+    \begin{itemize}
+        \item $S_A = N_A \oplus N_B$
+        \item $S_B = N_A \oplus N_B$
+        \item $K_{AB} = (g^b)^a \pmod p$
+        \item $K_{BA} = (g^a)^b \pmod p$
+    \end{itemize}
+
+    \item Se envían las confirmaciones de la autenticación y verificación de que utilizan la misma clave secreta y añadiendo valores de Timestamp (TS), es decir, cuándo se realizó el envío y de Lifetime (LT), es decir, hasta cuándo es válido este valor:
+    \begin{itemize}
+        \item $Auth_A = MAC(K_{AB}, S_A \parallel TS \parallel LT)$
+        \item $Auth_B = MAC(K_{BA}, S_B \parallel TS \parallel LT)$
+    \end{itemize}
+\end{enumerate}
+
+Si los valores intercambiados por Message Authentication Code (MAC) coinciden, se concluye como intercambio de claves y autenticación exitosa.
 
 % --- 5. IMPLEMENTACIÓN Y DEMOSTRACIÓN ---
 \section{Implementación y Demostración}
@@ -483,8 +525,7 @@ El proceso se inicia cuando el atacante (Hugo) lanza un ataque de inundación (\
     \label{fig:dos_flood}
 \end{figure}
 
-Al carecer de un algoritmo de validación en la fase de descubrimiento, la víctima intenta procesar cada una de estas solicitudes como si fueran legítimas. La Fig. \ref{fig:dos_logs} muestra los registros internos del sistema durante el ataque: inicialmente se aceptan los paquetes, pero la carga computacional escala rápidamente hasta agotar la capacidad de procesamiento, momento en el que se disparan las alertas de ``FALLO DEL SISTEMA''.
-
+Al carecer de un algoritmo de validación en la fase de descubrimiento, la víctima intenta procesar cada una de estas solicitudes como si fueran legítimas. La Fig. \ref{fig:dos_logs} muestra los registros internos del sistema durante el ataque: inicialmente se aceptan los paquetes, pero la carga computacional escala rápidamente hasta agotar la capacidad de procesamiento, momento en el que produce un fallo del sistema.
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.7\textwidth]{img/escenario1_logs.png}
@@ -540,7 +581,7 @@ El atacante (Hugo el Hacker) intenta suplantar al semáforo copiando exactamente
     \end{minipage}
 ç\end{figure}
 
-El atacante modifica su estrategia: mantiene la MAC suplantada pero altera la potencia de emisión a -67 dBm (Fig. \ref{fig:escenario2_envio3}), intentando simular un cambio de posición o fluctuación. La Fig. \ref{fig:escenario2_logs3} evidencia que el sistema no se deja engañar; al persistir el uso de una MAC ya registrada en el sistema, la solicitud sigue siendo rechazada ("BLOQUEADO") independientemente del cambio en la señal.
+El atacante modifica su estrategia: mantiene la MAC suplantada pero altera la potencia de emisión a -67 dBm (Fig. \ref{fig:escenario2_envio3}), intentando simular un cambio de posición o fluctuación. La Fig. \ref{fig:escenario2_logs3} evidencia que el sistema no se deja engañar; al persistir el uso de una MAC ya registrada en el sistema, la solicitud sigue siendo rechazada independientemente del cambio en la señal.
 
 \begin{figure}[H]
     \centering
@@ -639,7 +680,7 @@ Como se muestra en la secuencia de las Fig. \ref{fig:mitm_prot_1}, \ref{fig:mitm
 \begin{itemize}
     \item El protocolo detecta que la clave derivada por el atacante ($K_{AE}$) no coincide con la esperada por la víctima ($K_{BE}$).
     \item Al llegar al paso de verificación de autenticación (Mensaje $M11/M12$), Hugo es incapaz de falsificar un MAC válido porque desconoce el secreto compartido original.
-    \item \textbf{Resultado:} El sistema lanza la alerta \texttt{BLOQUEADO [M12]}. La conexión se aborta inmediatamente con la razón \textit{"Hugo no puede crear MACs válidos"}, protegiendo a los usuarios de establecer un canal inseguro.
+    \item \textbf{Resultado:} El sistema lanza la alerta \texttt{BLOQUEADO [M12]}. La conexión se aborta inmediatamente, protegiendo a los usuarios de establecer un canal inseguro.
 \end{itemize}
 
 \begin{figure}[H]
@@ -744,11 +785,10 @@ M.~Wang y Z.~Yan, ``A survey on security in D2D communications,'' \emph{Mobile N
 A.~S.~Alfa, B.~T.~Maharaj, H.~A.~Ghazaleh, y B.~Awoyemi, ``The role of 5G and IoT in Smart Cities,'' en \emph{Handbook of Smart Cities}, Springer, 2018, pp. 31--54. DOI: \url{https://doi.org/10.1007/978-3-319-97271-8_2}
 
 \bibitem{manual_usuario}
-F. Gago, S. Eslava, M. A. Herrera, ``Manual de Usuario: Protocolo MAKE para IoT,'' Documentación técnica, archivo \texttt{manual\_usuario.md} (Adjunto), 2025.
+F.~Gago, S.~Eslava, M.~A.~Herrera, ``Manual de Usuario: Protocolo MAKE para IoT,'' Documentación técnica, archivo \texttt{Guía Usuario.pdf} (Adjunto), 2025.
 
 \bibitem{codigo_fuente}
-F. Gago, S. Eslava, M. A. Herrera, ``Simulador-SmartCity'' Código fuente de la demostración práctica, archivo \texttt{Simulador-SmartCity.zip} (Adjunto), 2025.
-
+F.~Gago, S.~Eslava, M.~A.~Herrera, ``Simulador-SmartCity'' Código fuente de la demostración práctica, archivo \texttt{Simulador-SmartCity.zip} (Adjunto), 2025.
 
 \end{thebibliography}
 
