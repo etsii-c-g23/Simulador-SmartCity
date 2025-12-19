@@ -217,10 +217,6 @@ def register_device(mac: str, rssi: int) -> None:
         'status': DEVICE_STATUS_CONNECTED
     }
 
-def is_rssi_anomalous(stored_rssi: int, request_rssi: int) -> bool:
-    """Chequea si el RSSI es anómalo comparado con el registrado."""
-    return abs(stored_rssi - request_rssi) > RSSI_ANOMALY_THRESHOLD
-
 def is_same_location(stored_rssi: int, request_rssi: int) -> bool:
     """Chequea si la RSSI es muy similar (misma ubicación)."""
     return abs(stored_rssi - request_rssi) < RSSI_LOCATION_THRESHOLD
@@ -242,13 +238,6 @@ def check_device_secure_mode(req: DoSRequest) -> dict:
             return {
                 "status": "error",
                 "msg": f"⛔ BLOQUEADO: La MAC {req.mac} ya tiene sesión activa."
-            }
-        
-        # RSSI NO ES LO SUFICIENTEMENTE DISTINTO AL DE LA BASE DE DATOS
-        if is_rssi_anomalous(entry['rssi'], req.rssi):
-            return {
-                "status": "error",
-                "msg": f"⛔ BLOQUEADO: RSSI anómalo ({req.rssi} vs {entry['rssi']})."
             }
         
         # TANTO LA MAC COMO EL RSSI SON DISTINTOS A LAS ENTRADAS EN LA BASE DE DATOS
