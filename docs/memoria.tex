@@ -43,7 +43,7 @@
 \hypersetup{
     colorlinks=true,
     linkcolor=black, 
-    citecolor=green,
+    citecolor=darkgray,
     urlcolor=blue,
     pdftitle={Comunicaciones seguras en el internet de las cosas en redes 5G},
 }
@@ -103,11 +103,11 @@ IoT, Smart Cities, WiFi Direct, D2D, 5G, Ciberseguridad, Protocolo MAKE, SAS, RS
 \section{Introducción}
 En la actualidad, se observa una evolución de las ciudades hacia soluciones más tecnológicas e inteligentes. Estas soluciones se aplican en diferentes contextos como la detección de niveles de basura en los contenedores, la monitorización de plazas de aparcamiento disponibles o la gestión eficiente de infraestructuras urbanas. Este avance se logra gracias a la integración de sensores electrónicos, móviles y sistemas de información a dispositivos físicos con la finalidad de optimizar las actividades cotidianas. 
 
-En este escenario, el internet de las cosas (IoT), transforma objetos convencionales en objetos inteligentes, convirtiéndose en el motor de las Smart Cities. Como consecuencia, se prevé que para 2025 haya 75 mil millones de dispositivos IoT generando datos masivos. Para soportar este volumen de datos, se requiere una infraestructura con un gran ancho de banda y una muy baja latencia. Las redes 5G, ya que cumplen con estas características concretas y además permiten conexiones Device-to-Device (D2D), una tecnología crucial en este contexto.
+En este escenario, el internet de las cosas (IoT), transforma objetos convencionales en objetos inteligentes, convirtiéndose en el motor de las Smart Cities.\cite{alfa2018role} Como consecuencia, se prevé que para 2025 haya 75 mil millones de dispositivos IoT generando datos masivos. Para soportar este volumen de datos, se requiere una infraestructura con un gran ancho de banda y una muy baja latencia. Las redes 5G, ya que cumplen con estas características concretas y además permiten conexiones Device-to-Device (D2D), una tecnología crucial en este contexto.\cite{gaba2021secure}
 
 Las conexiones D2D son imprescindibles porque permiten a los dispositivos comunicarse directamente entre ellos sin la necesidad de pasar a través de una antena central que gestione las comunicaciones. Esto permite descongestionar la red y mejorar la eficiencia de la red. En redes 5G, estas comunicaciones pueden apoyarse tanto en servicios móviles como en Wi-Fi Direct. Sin embargo, el uso de los servicios móviles presenta limitaciones debido a la falta de cobertura en áreas urbanas. Por el otro lado, el WiFi Direct no tiene este problema, por lo que supone una ventaja significativa. Además, ofrece una transmisión de datos más rápida y menor latencia, siendo la opción más adecuada para implementar en las Smart Cities.
 
-No obstante, el uso del WiFi Direct en conexiones D2D, tienen ciertos problemas de seguridad. Al existir comunicación directa entre dispositivos, los atacantes pueden interferir en las comunicaciones de los dispositivos, permitiendo la escucha y modificación de mensajes y la suplantación de identidad. Las entidades están expuestas a diferentes ataques (Man-in-the-middle (MITM), DoS, etc..) lo que supone un riesgo importante. Evidentemente, las entidades D2D requieren protección frente a este tipo de amenazas, haciendo necesario un protocolo seguro que evite estos problemas.
+No obstante, el uso del WiFi Direct en conexiones D2D, tienen ciertos problemas de seguridad.\cite{shen2016secure} Al existir comunicación directa entre dispositivos, los atacantes pueden interferir en las comunicaciones de los dispositivos, permitiendo la escucha y modificación de mensajes y la suplantación de identidad. Las entidades están expuestas a diferentes ataques (Man-in-the-middle (MITM), DoS, etc..) lo que supone un riesgo importante. \cite{wang2017survey} Evidentemente, las entidades D2D requieren protección frente a este tipo de amenazas, haciendo necesario un protocolo seguro que evite estos problemas.
 
 \subsection{Contribución a la investigación}
 El articulo propone un protocolo de autenticación mutua y de establecimiento de claves seguro para el intercambio de información en comunicaciones Device-to-Device (D2D) sobre WiFi Direct en entornos IoT de ciudades inteligentes. La contribución de los autores se define en los siguientes cuatro fundamentos:
@@ -125,7 +125,7 @@ El articulo propone un protocolo de autenticación mutua y de establecimiento de
 \section{Contexto}
 
 \subsection{WiFi-Direct}
-El WiFi Direct es un protocolo de conexión de dispositivos, el cual permite a dos entidades conectarse sin la necesidad de un router externo. Esto permite una mayor transmisión de datos y una menor latencia, mejorando la eficiencia. Su funcionamiento se basa en las siguientes 4 fases (Fig. \ref{fig:diagrama_fases}):
+El WiFi Direct es un protocolo de conexión de dispositivos, el cual permite a dos entidades conectarse sin la necesidad de un router externo. Esto permite una mayor transmisión de datos y una menor latencia, mejorando la eficiencia. Su funcionamiento se basa en las siguientes 4 fases (Fig. \ref{fig:diagrama_fases}):\cite{shen2016secure}
 \begin{enumerate}
     \item \textbf{Fase de descubrimiento:} Es la fase inicial donde los dispositivos se detectan entre ellos para realizar las conexiones peer-to-peer(P2P). La búsqueda entre dispositivos se hace sin la necesidad de un router por el cual hacer las conexiones. 
     \item \textbf{Negociación de grupo:} Los dispositivos determinan quien actuará como Group Owner(GO), el cual es el que controla las comunicaciones del grupo. Este proceso se elige al GO, mediante un  handshake, donde cada participante del grupo P2P envía un “valor de intención”. El dispositivo que posea el valor intención más alto es quien se convierte en GO del grupo P2P.
@@ -239,8 +239,8 @@ A pesar de que el protocolo intenta prevenir el ataque MITM, este presenta una d
 \subsection{Limitaciones WPS}
 El protocolo WiFi Protected Setup (WPS) es un mecanismo de seguridad utilizado por WiFi Direct para proteger las comunicaciones D2D (Device-to-Device). Este permite que el Group Owner (GO) registre las comunicaciones, para enviar las credenciales de seguridad a los clientes. Además, ofrece protección mediante dos métodos principales: el PIN y el botón de configuración (Push Button). Ambos presentan limitaciones que comprometen la robustez del protocolo:
 \begin{enumerate}
-    \item \textbf{Vulnerabilidad del PIN:} Se centra en un fallo del PIN de configuración, ya que este puede ser descubierto fácilmente mediante un ataque de fuerza bruta en una pequeña fracción de tiempo. 
-    \item \textbf{Vulnerabilidad del botón de configuración (Push Button):} En un escenario donde un atacante active su botón al mismo tiempo que el usuario, podría obtener acceso no autorizado al GO o al cliente.
+    \item \textbf{Vulnerabilidad del PIN:} Se centra en un fallo del PIN de configuración, ya que este puede ser descubierto fácilmente mediante un ataque de fuerza bruta en una pequeña fracción de tiempo.\cite{viehbock2011wps} 
+    \item \textbf{Vulnerabilidad del botón de configuración (Push Button):} En un escenario donde un atacante active su botón al mismo tiempo que el usuario, podría obtener acceso no autorizado al GO o al cliente.\cite{viehbock2011wps}
 \end{enumerate}
 
 Estas dos vulnerabilidades comprometen la seguridad de las comunicaciones D2D, provocando accesos y revelación de secretos en las comunicaciones.
@@ -248,7 +248,7 @@ Estas dos vulnerabilidades comprometen la seguridad de las comunicaciones D2D, p
 % --- 3. OBJETIVOS DE SEGURIDAD ---
 \section{Objetivos de seguridad}
 
-El diseño de un protocolo criptográfico para infraestructuras críticas en Smart Cities debe resolver la tensión entre la necesidad de una seguridad robusta y las severas limitaciones de hardware de los dispositivos IoT. Para garantizar la viabilidad y confiabilidad del sistema propuesto, hemos formalizado los objetivos de seguridad basándonos en tres pilares fundamentales:
+El diseño de un protocolo criptográfico para infraestructuras críticas en Smart Cities debe resolver la tensión entre la necesidad de una seguridad robusta y las severas limitaciones de hardware de los dispositivos IoT. Para garantizar la viabilidad y confiabilidad del sistema propuesto, hemos formalizado los objetivos de seguridad basándonos en tres pilares fundamentales:\cite{gaba2021secure, wang2017survey}
 
 \begin{itemize}
     \item \textbf{Disponibilidad:} El sistema debe garantizar la continuidad del servicio incluso en presencia de ataques activos de saturación. En el contexto de un semáforo inteligente, la incapacidad de procesar datos legítimos debido a un ataque DoS podría derivar en accidentes de tráfico o congestión urbana.
@@ -467,14 +467,14 @@ El protocolo emplea el esquema \textbf{MAKE} (Mutual Authentication and Key Agre
 % --- 5. IMPLEMENTACIÓN Y DEMOSTRACIÓN ---
 \section{Implementación y Demostración}
 
-Para validar la viabilidad práctica de los protocolos teóricos presentados, se ha desarrollado un simulador interactivo basado en Python (FastAPI) y una interfaz web reactiva. Este entorno permite reproducir ataques reales y visualizar la eficacia de las contramedidas en tiempo real. Se adjunta al proyecto una \textit{Guía de Usuario} detallada para la ejecución del software.
+Para validar la viabilidad práctica de los protocolos teóricos presentados, se ha desarrollado un simulador interactivo basado en Python (FastAPI) y una interfaz web reactiva.\cite{codigo_fuente} Este entorno permite reproducir ataques reales y visualizar la eficacia de las contramedidas en tiempo real. Se adjunta al proyecto un \textit{Manual de Usuario} detallado para la ejecución del software.\cite{manual_usuario}
 
 A continuación, se documentan los resultados obtenidos en los cuatro escenarios de prueba disponibles en la herramienta.
 
 \subsection{Escenario 1: Ataque DoS (Vulnerable)}
 En este modo, se simula un dispositivo IoT receptor (Cámara) sin mecanismos de filtrado previo. El objetivo es demostrar la fragilidad de los dispositivos con recursos limitados ante solicitudes masivas.
 
-El proceso se inicia cuando el atacante (Hugo) lanza un ataque de inundación (\textit{flooding}). Como se observa en la Fig. \ref{fig:dos_flood}, el adversario envía una ráfaga continua de paquetes de solicitud (REQ) hacia el dispositivo víctima, saturando el canal de comunicación.
+El proceso se inicia cuando el atacante (Hugo) lanza un ataque de inundación (\textit{flooding}).\cite{hadiks2014dos} Como se observa en la Fig. \ref{fig:dos_flood}, el adversario envía una ráfaga continua de paquetes de solicitud (REQ) hacia el dispositivo víctima, saturando el canal de comunicación.
 
 \begin{figure}[H]
     \centering
@@ -594,26 +594,73 @@ Finalmente, se simula una conexión válida donde cambian tanto la identidad com
     \end{minipage}
 \end{figure}
 
-\subsection{Escenario 3: Ataque MitM (Vulnerable)}
-Este modo reproduce el funcionamiento del protocolo estándar SAS, donde los parámetros de intercambio de claves se envían en texto claro.
 
-La Fig. \ref{fig:mitm_vuln} evidencia la vulnerabilidad crítica: el atacante (``Hugo'') logra interceptar el intercambio inicial entre Alice y Bob, inyectando sus propios parámetros. Esto resulta en el establecimiento de dos claves de sesión independientes ($K_{AE}$ y $K_{BE}$), permitiendo al atacante espiar y manipular el tráfico sin ser detectado.
+\subsection{Escenario 3: Ataque MitM en protocolo estándar (Vulnerable)}
+En este escenario se evalúa la resistencia del protocolo estándar SAS frente a un atacante activo (Hugo). Para contextualizar el impacto del ataque, primero se presenta el funcionamiento nominal del sistema y posteriormente el ataque exitoso del Hacker.
+
+\subsubsection*{Conexión legítima (Sin ataque)}
+En condiciones normales, como se observa en la Fig. \ref{fig:sin_ataque}, Alice y Bob intercambian sus claves públicas Diffie-Hellman sin interferencias. El log confirma que ambos calculan la misma clave de sesión ($S_A = S_B = 11871$), completando la autenticación mutua de forma exitosa.
+
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.75\textwidth]{img/algoritmo1.png} 
-    \caption{Escenario 3: Ataque Man-in-the-Middle exitoso interceptando el intercambio SAS estándar.}
-    \label{fig:mitm_vuln}
+    \includegraphics[width=0.95\textwidth]{img/SinAtaque.png} 
+    \caption{Ejecución nominal: Alice y Bob derivan claves idénticas ($S_A=S_B$) sin interferencias.}
+    \label{fig:sin_ataque}
 \end{figure}
 
-\subsection{Escenario 4: Protección MitM (Protocolo MAKE)}
-Finalmente, se valida la implementación del protocolo MAKE propuesto. Este añade un esquema de compromiso (\textit{Commit/Open}) y verificación temporal.
+\subsubsection*{Ejecución del Ataque MitM}
+La vulnerabilidad crítica se manifiesta cuando el atacante intercepta el canal. Como se evidencia en las Figs. \ref{fig:mitm_std_1} y \ref{fig:mitm_std_2}, Hugo se posiciona entre las víctimas:
+\begin{enumerate}
+    \item \textbf{Intercepción:} Hugo detiene los mensajes de compromiso ($M1, M2$) y reemplaza las claves públicas ($g_a, g_b$) por las suyas propias ($g_e$).
+    \item \textbf{Suplantación:} Alice cree establecer una clave con Bob, pero en realidad establece $K_{AE} = 22$ con Hugo. Simultáneamente, Bob establece $K_{BE} = 20$ con Hugo.
+    \item \textbf{Resultado:} El log final indica \texttt{MITM COMPLETADO}. Hugo posee ambas claves y puede descifrar y re-cifrar el tráfico entre Alice y Bob de manera transparente, comprometiendo totalmente la confidencialidad.
+\end{enumerate}
 
-En la Fig. \ref{fig:mitm_prot} se muestra cómo el intento de manipulación es neutralizado. El atacante, al no conocer el secreto comprometido en la fase inicial, falla al intentar generar una apertura válida. El protocolo detecta la inconsistencia matemática en el tercer paso y aborta la conexión preventivamente, garantizando la integridad del canal.
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.75\textwidth]{img/algoritmo1.png} 
-    \caption{Escenario 4: El protocolo MAKE detecta la manipulación en la fase de apertura y aborta la conexión.}
-    \label{fig:mitm_prot}
+    \includegraphics[width=0.95\textwidth]{img/MITMEstandar1.png} 
+    \caption{Fase inicial del ataque: Hugo intercepta los parámetros y suplanta las identidades de Alice y Bob.}
+    \label{fig:mitm_std_1}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/MITMEstandar2.png} 
+    \caption{Ataque exitoso: Se establecen dos claves de sesión distintas ($S_{AE} \neq S_{BE}$), otorgando al atacante control total del canal.}
+    \label{fig:mitm_std_2}
+\end{figure}
+
+
+\subsection{Escenario 4: Protección MitM (Protocolo MAKE)}
+Finalmente, se valida la eficacia de la propuesta MAKE. Este protocolo introduce verificación de integridad mediante MAC y sellado de tiempo para prevenir la manipulación de parámetros en tránsito.
+
+Como se muestra en la secuencia de las Fig. \ref{fig:mitm_prot_1}, \ref{fig:mitm_prot_2} y \ref{fig:mitm_prot_3}, el atacante intenta replicar la estrategia anterior modificando el mensaje $M4$ para inyectar su clave ($g_e$). Sin embargo, el mecanismo de seguridad responde de la siguiente manera:
+
+\begin{itemize}
+    \item El protocolo detecta que la clave derivada por el atacante ($K_{AE}$) no coincide con la esperada por la víctima ($K_{BE}$).
+    \item Al llegar al paso de verificación de autenticación (Mensaje $M11/M12$), Hugo es incapaz de falsificar un MAC válido porque desconoce el secreto compartido original.
+    \item \textbf{Resultado:} El sistema lanza la alerta \texttt{BLOQUEADO [M12]}. La conexión se aborta inmediatamente con la razón \textit{"Hugo no puede crear MACs válidos"}, protegiendo a los usuarios de establecer un canal inseguro.
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/MITMProtegido_1.png} 
+    \caption{Fase de Inyección: El atacante intercepta el intercambio Diffie-Hellman e intenta manipular el mensaje M4 reemplazando la clave pública legítima ($g_b$) por la suya ($g_e$).}
+    \label{fig:mitm_prot_1}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/MITMProtegido_2.png} 
+    \caption{Desincronización de Claves: Como resultado de la manipulación, las víctimas derivan claves de sesión divergentes ($S_A \neq S_B$) que el atacante no puede unificar.}
+    \label{fig:mitm_prot_2}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/MITMProtegido_3.png} 
+    \caption{Prevención del Ataque: El mecanismo de seguridad verifica el MAC en el paso M12. Al detectar la firma inválida (debido a la clave incorrecta del atacante), el sistema bloquea la conexión instantáneamente.}
+    \label{fig:mitm_prot_3}
 \end{figure}
 
 % --- 6. ANÁLISIS ---
@@ -667,9 +714,9 @@ El crecimiento exponencial de las Smart Cities plantea desafíos críticos de se
 La validación teórica y experimental del protocolo propuesto permite extraer tres conclusiones fundamentales:
 
 \begin{enumerate}
-    \item \textbf{Resiliencia ante ataques de saturación:} La incorporación de un algoritmo de filtrado contextual en la fase de descubrimiento permite discriminar eficazmente el tráfico malicioso. A diferencia de los estándares actuales que procesan indiscriminadamente todas las solicitudes, nuestra propuesta mitiga los ataques de Denegación de Servicio (DoS) en una etapa temprana, preservando la vida útil de la batería y la disponibilidad del servicio.
+    \item \textbf{Resiliencia ante ataques de saturación:} La incorporación de un algoritmo de filtrado contextual en la fase de descubrimiento permite discriminar eficazmente el tráfico malicioso. A diferencia de los estándares actuales que procesan indiscriminadamente todas las solicitudes, nuestra propuesta mitiga los ataques de Denegación de Servicio (DoS) en una etapa temprana,\cite{hadiks2014dos} preservando la vida útil de la batería y la disponibilidad del servicio.
     
-    \item \textbf{Integridad criptográfica ligera:} La implementación del esquema de compromiso (Commit/Open) junto con la autenticación mutua (MAKE) ha demostrado ser una solución robusta contra ataques de intermediario (Man-in-the-Middle). Al evitar el intercambio de claves en texto claro y garantizar la frescura de los mensajes mediante marcas de tiempo, se logra un canal seguro utilizando únicamente operaciones criptográficas ligeras (XOR, hash), ideales para el hardware restringido del IoT.
+    \item \textbf{Integridad criptográfica ligera:} La implementación del esquema de compromiso (Commit/Open) junto con la autenticación mutua (MAKE) ha demostrado ser una solución robusta contra ataques de intermediario (Man-in-the-Middle).\cite{gaba2021secure} Al evitar el intercambio de claves en texto claro y garantizar la frescura de los mensajes mediante marcas de tiempo, se logra un canal seguro utilizando únicamente operaciones criptográficas ligeras (XOR, hash), ideales para el hardware restringido del IoT.
     
     \item \textbf{Viabilidad operativa:} Los resultados confirman que la seguridad no debe estar reñida con la eficiencia. El protocolo mantiene una latencia mínima y una alta estabilidad bajo estrés, validando su idoneidad para entornos críticos donde la inmediatez y la veracidad de los datos son imperativas.
 \end{enumerate}
@@ -692,8 +739,16 @@ S.~Viehböck, ``Brute forcing Wi-Fi Protected Setup,'' \emph{Wi-Fi Protected Set
 
 \bibitem{wang2017survey}
 M.~Wang y Z.~Yan, ``A survey on security in D2D communications,'' \emph{Mobile Networks and Applications}, vol. 22, no. 2, pp. 195--208, 2017. DOI: \url{https://doi.org/10.1007/s11036-016-0741-5}
+
 \bibitem{alfa2018role}
 A.~S.~Alfa, B.~T.~Maharaj, H.~A.~Ghazaleh, y B.~Awoyemi, ``The role of 5G and IoT in Smart Cities,'' en \emph{Handbook of Smart Cities}, Springer, 2018, pp. 31--54. DOI: \url{https://doi.org/10.1007/978-3-319-97271-8_2}
+
+\bibitem{manual_usuario}
+F. Gago, S. Eslava, M. A. Herrera, ``Manual de Usuario: Protocolo MAKE para IoT,'' Documentación técnica, archivo \texttt{manual\_usuario.md} (Adjunto), 2025.
+
+\bibitem{codigo_fuente}
+F. Gago, S. Eslava, M. A. Herrera, ``Simulador-SmartCity'' Código fuente de la demostración práctica, archivo \texttt{Simulador-SmartCity.zip} (Adjunto), 2025.
+
 
 \end{thebibliography}
 
