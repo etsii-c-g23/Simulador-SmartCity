@@ -77,7 +77,10 @@ Este script:
 1. Abre automáticamente el navegador en `http://127.0.0.1:8000`
 2. Inicia el servidor backend FastAPI
 
-#### Opción B: Desde la terminal
+#### Opción B: Desde la terminal del ordenador
+
+> Nota: en la carpeta, hacer click derecho y seleccionar Abrir en Terminal
+
 ```bash
 uvicorn backend:app --reload
 ```
@@ -91,6 +94,8 @@ Abre tu navegador y navega a:
 ```
 http://127.0.0.1:8000
 ```
+
+> Nota: a veces es necesario recargar la página al iniciar el script.
 
 ### Paso 4: Detener el Servidor
 Presiona `Ctrl + C` en la terminal para detener el servidor.
@@ -125,6 +130,29 @@ El contenido del panel cambia según el modo seleccionado:
 - **Paso del Protocolo**: Contador dinámico. Vulnerable: 4 (sin ataque) o 10 (con ataque). Seguro: 6 (sin ataque) o 12 (con ataque).
 - **INICIAR/SIGUIENTE PASO**: Botón para avanzar en la simulación del protocolo
 
+##### Parámetros Diffie-Hellman y Valores de Actores
+El panel inferior muestra los parámetros criptográficos editables:
+
+**Parámetros comunes:**
+- `g`: Generador (raíz primitiva de p). Valores comunes: 5
+- `p`: Número primo usado en Diffie-Hellman. Valores comunes: 23, 29
+
+> ⚠️ **Nota**: Los parámetros se validan automáticamente. Si `p` no es primo o `g` no es raíz primitiva de `p`, el protocolo no iniciará y mostrará un error descriptivo.
+
+**Para cada actor (Alice, Bob, Hugo):**
+
+| Parámetro | Alice | Bob | Hugo | Descripción |
+|-----------|-------|-----|------|-------------|
+| **MAC** | AA:BB:CC:DD:EE:01 | AA:BB:CC:DD:EE:02 | AA:BB:CC:DD:EE:03 | Identificador único del dispositivo (editable) |
+| **a / b / e** | Exponente secreto `a` | Exponente secreto `b` | Exponente secreto `e` | Números aleatorios guardados en secreto |
+| **NA / NB / NE** | Nonce (número aleatorio) | Nonce (número aleatorio) | Nonce (número aleatorio) | Valores de un solo uso para evitar ataques de repetición |
+| **g^exp mod p** | `ga = g^a mod p` | `gb = g^b mod p` | `ge = g^e mod p` | Valores públicos (se calculan automáticamente al cambiar exponentes) |
+
+**Comportamiento:**
+- Los campos de exponentes y nonces se pueden editar manualmente para simular diferentes escenarios
+- Los valores públicos (`g^exp mod p`) se recalculan automáticamente cuando cambias `g`, `p` o el exponente de un actor
+- Durante un protocolo en curso, los parámetros están bloqueados para evitar cambios inconsistentes
+
 ### 4.3 Zona de Visualización (Centro)
 Muestra una representación visual animada de:
 - **Alice (Semáforo)**: A la izquierda, con borde verde
@@ -137,9 +165,9 @@ Muestra una representación visual animada de:
 ┌────────────────────────────────────────────────────────────┐
 │ ● System Security Logs                  [Limpiar Consola] │
 ├────────────────────────────────────────────────────────────┤
-│ [12:34:56] ✅ ACCESO CONCEDIDO: Dispositivo verificado.      │
-│ [12:34:57] ⛔ BLOQUEADO: La MAC ... ya tiene sesión activa.  │
-│ [12:34:58] ❌ FALLO DEL SISTEMA: La CPU ha colapsado.        │
+│ [12:34:56] ✅ ACCESO CONCEDIDO: Dispositivo verificado.    │
+│ [12:34:57] ⛔ BLOQUEADO: La MAC ... ya tiene sesión activa.│
+│ [12:34:58] ❌ FALLO DEL SISTEMA: La CPU ha colapsado.      │
 └────────────────────────────────────────────────────────────┘
 ```
 - **Indicador de estado**: Punto verde parpadeante cuando está activo
@@ -168,7 +196,7 @@ Ilustrar que sin filtrado previo, un atacante puede agotar los recursos de un di
    - Remitente: SEMÁFORO
    - MAC: `11:22:33:44:55:66` (dispositivo legítimo)
    - RSSI: `-45` dBm
-3. **Envía varios paquetes** pulsando repetidamente "ENVIAR PAQUETE"
+3. **Envía varios paquetes** pulsando repetidamente "ENVIAR PAQUETE" tanto con SEMÁFORO como con HACKER
 4. **Observa la degradación**:
    - Cada paquete reduce la "CPU" de la cámara
    - El contador baja progresivamente (20 → 19 → 18...)
@@ -178,20 +206,6 @@ Ilustrar que sin filtrado previo, un atacante puede agotar los recursos de un di
    - El borde de Bob cambia a rojo y pulsa
    - La imagen cambia a una cámara rota
    - El botón cambia a "SISTEMA CAÍDO (CPU 0)"
-
-#### Variante: Ataque desde el Hacker
-1. Selecciona **HACKER** como remitente
-2. Cambia la MAC a cualquier valor (ej: `AA:BB:CC:DD:EE:FF`)
-3. Envía paquetes
-4. **Resultado**: El sistema también acepta estos paquetes y se agota igualmente
-
-#### Capturas de Pantalla
-
-**Estado Inicial (Sistema operativo):**
-![Estado inicial del modo DoS Vulnerable](img/01_estado_inicial_dos_vulnerable.png)
-
-**Sistema Colapsado (CPU agotada):**
-![Sistema caído tras ataque DoS](img/02_sistema_caido_dos.png)
 
 > 💡 **Nota**: Cuando el sistema colapsa, aparece el mensaje:
 > "❌ FALLO DEL SISTEMA: La CPU de la Cámara ha colapsado (CPU 0)."
@@ -211,9 +225,8 @@ El sistema aplica las siguientes reglas:
 
 | Condición | Acción |
 |-----------|--------|
-| MAC conocida + sesión activa | ⛔ BLOQUEADO |
+| MAC conocida | ⛔ BLOQUEADO |
 | MAC desconocida + mismo RSSI que otro dispositivo (diferencia de 5 dBm) | ⛔ BLOQUEADO |
-| MAC conocida + parámetros válidos | ✅ ACCESO CONCEDIDO |
 | MAC desconocida + RSSI único | 🆕 NUEVO DISPOSITIVO registrado |
 
 #### Cómo Usar
@@ -239,16 +252,8 @@ El sistema aplica las siguientes reglas:
 4. Envía el paquete
 5. **Resultado esperado**: "⛔ BLOQUEADO: Distinta MAC en misma ubicación."
 
-#### Capturas de Pantalla
-
-**Acceso Concedido (Dispositivo legítimo):**
-![Acceso concedido en modo DoS Protection](img/03_dos_protection_acceso.png)
-
-**Ataque Bloqueado (Spoofing detectado):**
-![Bloqueo de ataque en modo DoS Protection](img/04_dos_protection_bloqueo.png)
-
 #### Observación Clave
-> ⚡ **Importante**: En este modo, la CPU de la cámara **NO se reduce** al rechazar paquetes, ya que el filtrado ocurre antes de consumir recursos.
+> **Importante**: En este modo, la CPU de la cámara **NO se reduce** al rechazar paquetes, ya que el filtrado ocurre antes de consumir recursos.
 
 ---
 
@@ -260,32 +265,6 @@ Este modo simula el protocolo **SAS (Short Authentication String)** estándar si
 #### Objetivo
 Ilustrar que sin esquemas de compromiso (Commit/Open) ni verificación temporal, un atacante puede establecer claves separadas con ambas partes sin ser detectado.
 
-#### El Protocolo Vulnerable (4 pasos sin ataque / 10 pasos con ataque)
-
-**Sin ataque activo (4 pasos):**
-
-| Paso | Mensaje | Descripción |
-|------|---------|-------------|
-| 1 | Alice → Bob | `mA = IDA ∥ gᵃ ∥ NA` (en claro) |
-| 2 | Bob → Alice | `mB = IDB ∥ gᵇ ∥ NB` (en claro) |
-| 3 | Ambos | Calculan SAS: `S = NA ⊕ NB` |
-| 4 | Resultado | Establecen clave: `K = gᵃᵇ mod p` |
-
-**Con ataque activo (10 pasos):**
-
-| Paso | Flujo | Descripción |
-|------|-------|-------------|
-| 1 | Alice → Hugo | Hugo intercepta `mA` en lugar de reenviarlo a Bob |
-| 2 | Hugo → Bob | Hugo envía `mE = IDA ∥ gᵉ ∥ NE` suplantando a Alice |
-| 3 | Bob → Hugo | Bob responde con `mB = IDB ∥ gᵇ ∥ NB` |
-| 4 | Hugo → Alice | Hugo envía a Alice `mB' = IDB ∥ gᵉ ∥ NB` (reemplaza `gᵇ` por `gᵉ`) |
-| 5 | Alice calcula | `SA = NA ⊕ NB` (usando el nonce de Bob) |
-| 6 | Bob calcula | `SB = NE ⊕ NB` (usando el nonce falso de Hugo) |
-| 7 | Hugo ↔ Alice | Hugo establece `KAE = gᵃᵉ mod p` con Alice |
-| 8 | Hugo ↔ Bob | Hugo establece `KBE = gᵇᵉ mod p` con Bob |
-| 9 | Resultado | Hugo puede leer mensajes de Alice con `KAE` |
-| 10 | Resultado | Hugo puede leer mensajes de Bob con `KBE`; MITM exitoso |
-
 #### Cómo Usar
 
 **Sin Ataque Activo:**
@@ -293,34 +272,19 @@ Ilustrar que sin esquemas de compromiso (Commit/Open) ni verificación temporal,
 2. Mantén el toggle "ATAQUE ACTIVO" desactivado
 3. Pulsa "▶ INICIAR PROTOCOLO"
 4. Avanza paso a paso pulsando "⬇ SIGUIENTE PASO"
-5. Observa los logs:
-   - Paso 1: Alice envía sus parámetros
-   - Paso 2: Bob responde con sus parámetros
-   - Paso 3: Ambos calculan SAS
-   - Paso 4: "✅ Autenticación exitosa. Alice y Bob establecen KAB"
+5. Observa los logs
 
 **Con Ataque Activo (10 pasos):**
 1. Activa el toggle "ATAQUE ACTIVO" (cambia a rojo)
 2. Observa que Hugo (atacante) se ilumina en rojo
-3. Inicia y avanza el protocolo (10 pasos):
-   - Paso 1: Alice envía `mA` a Bob
-   - Paso 2: "⚠️ Hugo intercepta `mA` y genera `mE = IDA ∥ gᵉ ∥ NE`"
-   - Paso 3: "📤 Hugo → Bob: Envía `mE` falsificado. Bob responde con `mB = IDB ∥ gᵇ ∥ NB`"
-   - Paso 4: "🔄 Hugo modifica `mB` → `mB' = IDB ∥ gᵉ ∥ NB` y lo envía a Alice"
-   - Pasos 5-6: Alice y Bob calculan sus respectivos SAS (con valores alterados)
-   - Pasos 7-8: Hugo establece claves separadas `KAE` con Alice y `KBE` con Bob
-   - Pasos 9-10: "❌ MITM EXITOSO: Hugo puede descifrar y leer todos los mensajes"
+3. Inicia y avanza el protocolo
+4. Observa los logs
 
 #### Resultado del Ataque
 Hugo (el atacante) ha establecido:
 - Una clave `KAE = gᵃᵉ mod p` con Alice (ella cree que habla con Bob)
 - Una clave `KBE = gᵇᵉ mod p` con Bob (él cree que habla con Alice)
 - Hugo puede descifrar, leer, modificar y reenviar todos los mensajes sin ser detectado
-
-#### Captura de Pantalla
-
-**Ataque MitM Exitoso:**
-![Ataque MitM exitoso en protocolo vulnerable](img/05_mitm_ataque_exitoso.png)
 
 ---
 
@@ -332,36 +296,6 @@ Este modo implementa el protocolo **MAKE (Mutual Authentication and Key Establis
 #### Objetivo
 Demostrar que el uso de compromisos criptográficos y marcas de tiempo impide que un atacante modifique los parámetros de negociación sin ser detectado.
 
-#### El Protocolo Seguro (6 pasos sin ataque / 12 pasos con ataque)
-
-**Sin ataque activo (6 pasos):**
-
-| Paso | Mensaje | Descripción |
-|------|---------|-------------|
-| 1 | Alice → Bob | Envía valor de compromiso `cA` (hash del secreto) |
-| 2 | Bob → Alice | Envía `mB = IDA ∥ IDB ∥ gᵇ ∥ NB` |
-| 3 | Alice → Bob | Envía valor de apertura `dA` (Bob verifica integridad) |
-| 4 | Alice → Bob | Envía `AuthA = TS ∥ LT ∥ MAC(KAB, SA ∥ TS ∥ LT)` |
-| 5 | Bob → Alice | Envía `AuthB = MAC(KBA, SB ∥ TS ∥ LT)` |
-| 6 | Resultado | Canal seguro establecido, claves verificadas |
-
-**Con ataque activo (12 pasos):**
-
-| Paso | Flujo | Descripción |
-|------|-------|-------------|
-| 1 | Alice → Hugo | Hugo intercepta `cA` (compromiso de Alice) |
-| 2 | Hugo → Bob | Hugo envía `cE` (su propio compromiso falso) |
-| 3 | Bob → Hugo | Bob responde con `mB = IDA ∥ IDB ∥ gᵇ ∥ NB` |
-| 4 | Hugo → Alice | Hugo envía `mB' = IDA ∥ IDB ∥ gᵉ ∥ NB` (reemplaza `gᵇ` por `gᵉ`) |
-| 5 | Alice → Hugo | Alice envía `dA` (apertura de su compromiso) |
-| 6 | Hugo → Bob | Hugo envía `dE` (su falsa apertura) |
-| 7 | Alice calcula | `SA = NA ⊕ NB` |
-| 8 | Bob calcula | `SB = NA ⊕ NB` |
-| 9 | Alice → Hugo | Alice envía `AuthA = TS ∥ LT ∥ MAC(KAE, SA ∥ TS ∥ LT)` |
-| 10 | Bob → Hugo | Bob envía `AuthB = MAC(KBE, SB ∥ TS ∥ LT)` |
-| 11 | Hugo intenta | Intenta falsificar MACs pero falla (KAE ≠ KBE) |
-| 12 | Resultado | 🛡️ MITM DETECTADO: Los MACs no coinciden. Alice y Bob abortan la conexión |
-
 #### Cómo Usar
 
 **Sin Ataque Activo:**
@@ -372,17 +306,8 @@ Demostrar que el uso de compromisos criptográficos y marcas de tiempo impide qu
 
 **Con Ataque Activo:**
 1. Activa el toggle "ATAQUE ACTIVO"
-2. Avanza por los 12 pasos observando cómo Hugo intenta el ataque:
-   - **Pasos 1-4**: Hugo intercepta el compromiso `cA` y sustituye el valor público de Bob con el suyo
-   - **Pasos 5-6**: Hugo envía falsas aperturas (`dA` y `dE`) intentando mantener la ilusión
-   - **Pasos 7-8**: Alice y Bob calculan sus cadenas cortas (que aparentemente coinciden a nivel de usuario)
-   - **Pasos 9-10**: Alice y Bob envían sus autenticadores `AuthA` y `AuthB` con timestamps (`TS`) y duración (`LT`)
-   - **Pasos 11-12**: "🛡️ DETECCIÓN DE MITM: Hugo no puede falsificar los MACs porque derivó claves diferentes (`KAE` y `KBE`). El protocolo aborta la conexión cuando los MACs no coinciden."
-
-#### Captura de Pantalla
-
-**Ataque Bloqueado en Paso 12:**
-![Bloqueo del ataque MitM en protocolo seguro](img/06_mitm_bloqueo_seguro.png)
+2. Avanza por los 12 pasos observando cómo Hugo intenta el ataque
+3. Observa los logs
 
 #### Clave del Éxito
 > 🛡️ **Por qué funciona**: El protocolo seguro usa dos mecanismos de defensa:

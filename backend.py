@@ -174,6 +174,7 @@ def create_initial_mitm_params():
 server_db = INITIAL_DB.copy()
 camera_state = INITIAL_CAMERA_STATE.copy()
 mitm_params = create_initial_mitm_params()
+protocol_session_ts = None  # TS persistente por sesión de protocolo
 
 # ==========================================
 # FUNCIONES AUXILIARES
@@ -188,10 +189,11 @@ def load_frontend_html() -> str:
 
 def reset_all_state() -> None:
     """Reinicia el estado global del sistema."""
-    global server_db, camera_state, mitm_params
+    global server_db, camera_state, mitm_params, protocol_session_ts
     server_db = {k: v.copy() for k, v in INITIAL_DB.items()}
     camera_state = INITIAL_CAMERA_STATE.copy()
     mitm_params = create_initial_mitm_params()
+    protocol_session_ts = None
 
 def is_camera_down() -> bool:
     """Verifica si la cámara está caída."""
@@ -313,7 +315,11 @@ def get_secure_protocol_message(step: int, mitm_active: bool, params: dict = Non
         params = {}
     
     import time
-    
+    global protocol_session_ts
+
+    if protocol_session_ts is None or step == 1:
+        protocol_session_ts = int(time.time())
+
     alice = params.get('alice', {})
     bob = params.get('bob', {})
     hugo = params.get('hugo', {})
@@ -328,7 +334,7 @@ def get_secure_protocol_message(step: int, mitm_active: bool, params: dict = Non
     KBE = modExp(gb, hugo.get('e', 0), p) if p > 0 and gb > 0 else 0
 
     # Generar TS (Timestamp) y LT (Lifetime) para seguridad
-    ts = int(time.time())
+    ts = protocol_session_ts
     lt = 3600  # 1 hora de validez
 
     commit_ca = f"hash({alice.get('mac', 'IDA')}||{ga}||{alice.get('NA', 0)})"
